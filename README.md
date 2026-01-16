@@ -35,12 +35,32 @@ The root provider that initializes the SDK and provides context to child compone
   helpCenter="your-help-center"
   publicKey="pk_live_xxx"
   config={{
-    panel: { position: 'right' },
-    theme: { mode: 'system' },
+    panel: { position: 'right', mode: 'push' },
+    edgeTrigger: { enabled: true },
+    theme: { mode: 'auto' },
   }}
 >
   {children}
 </PillarProvider>
+```
+
+### Custom Trigger Button
+
+To use your own button instead of the built-in edge trigger:
+
+```tsx
+<PillarProvider
+  helpCenter="your-help-center"
+  publicKey="pk_live_xxx"
+  config={{ edgeTrigger: { enabled: false } }}
+>
+  <MyApp />
+</PillarProvider>
+
+function HelpButton() {
+  const { toggle } = useHelpPanel();
+  return <button onClick={toggle}>Get Help</button>;
+}
 ```
 
 ### Tooltip
