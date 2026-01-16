@@ -62,7 +62,7 @@ export { usePillar, type UsePillarResult, type TypedUsePillarResult } from './ho
 
 // Re-export types from core SDK for convenience
 export type {
-    FloatingButtonConfig,
+    EdgeTriggerConfig,
     PanelConfig,
     PillarConfig,
     PillarEvents,

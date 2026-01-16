@@ -36,7 +36,6 @@ The root provider that initializes the SDK and provides context to child compone
   publicKey="pk_live_xxx"
   config={{
     panel: { position: 'right' },
-    floatingButton: { enabled: true },
     theme: { mode: 'system' },
   }}
 >
