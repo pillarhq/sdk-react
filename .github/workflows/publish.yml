@@ -24,6 +24,28 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
+      - name: Wait for @pillar-ai/sdk dependency to be available
+        run: |
+          REQUIRED_VERSION=$(node -p "require('./package.json').dependencies['@pillar-ai/sdk'].replace('^', '').replace('~', '')")
+          echo "Waiting for @pillar-ai/sdk@$REQUIRED_VERSION to be available on npm..."
+
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            AVAILABLE_VERSION=$(npm view @pillar-ai/sdk@$REQUIRED_VERSION version 2>/dev/null || echo "")
+            if [ "$AVAILABLE_VERSION" = "$REQUIRED_VERSION" ]; then
+              echo "✓ @pillar-ai/sdk@$REQUIRED_VERSION is available!"
+              exit 0
+            fi
+            
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt $ATTEMPT/$MAX_ATTEMPTS: @pillar-ai/sdk@$REQUIRED_VERSION not yet available, waiting 10s..."
+            sleep 10
+          done
+
+          echo "✓ Proceeding anyway - SDK may already be published or using existing version"
+
       - name: Install dependencies
         run: npm install
 
