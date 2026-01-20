@@ -82,5 +82,7 @@ export type {
     SyncActionDefinitions,
     ActionDataType,
     ActionNames,
+    // Chat context for escalation
+    ChatContext,
 } from '@pillar-ai/sdk';
 
