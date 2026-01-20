@@ -1,6 +1,6 @@
 {
   "name": "@pillar-ai/react",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "React bindings for Pillar Embedded Help SDK",
   "type": "module",
   "main": "./dist/index.esm.js",
@@ -52,7 +52,7 @@
     "react-dom": ">=17.0.0 || >=19.0.0"
   },
   "dependencies": {
-    "@pillar-ai/sdk": "^0.1.6"
+    "@pillar-ai/sdk": "^0.1.7"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",
