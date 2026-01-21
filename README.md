@@ -17,7 +17,7 @@ import { PillarProvider } from '@pillar-ai/react';
 
 function App() {
   return (
-    <PillarProvider helpCenter="your-help-center" publicKey="pk_live_xxx">
+    <PillarProvider helpCenter="your-help-center">
       <MyApp />
     </PillarProvider>
   );
@@ -33,7 +33,6 @@ The root provider that initializes the SDK and provides context to child compone
 ```tsx
 <PillarProvider
   helpCenter="your-help-center"
-  publicKey="pk_live_xxx"
   config={{
     panel: { position: 'right', mode: 'push' },
     edgeTrigger: { enabled: true },
@@ -51,7 +50,6 @@ To use your own button instead of the built-in edge trigger:
 ```tsx
 <PillarProvider
   helpCenter="your-help-center"
-  publicKey="pk_live_xxx"
   config={{ edgeTrigger: { enabled: false } }}
 >
   <MyApp />
@@ -86,7 +84,6 @@ function App() {
   return (
     <PillarProvider
       helpCenter="your-help-center"
-      publicKey="pk_live_xxx"
       config={{ panel: { container: 'manual' } }}
     >
       <div className="layout">
@@ -161,7 +158,6 @@ function App() {
   return (
     <PillarProvider
       helpCenter="your-help-center"
-      publicKey="pk_live_xxx"
       actions={actions}
       onTask={(type, data) => {
         // TypeScript knows the exact shape of data based on type

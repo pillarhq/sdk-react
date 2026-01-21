@@ -113,9 +113,6 @@ export interface PillarProviderProps {
   /** Help center subdomain or identifier */
   helpCenter: string;
 
-  /** Public API key */
-  publicKey: string;
-
   /**
    * Additional SDK configuration
    *
@@ -123,7 +120,7 @@ export interface PillarProviderProps {
    * - `panel.useShadowDOM`: Whether to isolate styles in Shadow DOM (default: false).
    *   Set to false to let custom cards inherit your app's CSS (Tailwind, etc.)
    */
-  config?: Omit<PillarConfig, "helpCenter" | "publicKey">;
+  config?: Omit<PillarConfig, "helpCenter">;
 
   /**
    * Handler called when a task action is triggered from the chat.
@@ -133,7 +130,6 @@ export interface PillarProviderProps {
    * ```tsx
    * <PillarProvider
    *   helpCenter="my-app"
-   *   publicKey="pk_..."
    *   onTask={(task) => {
    *     switch (task.name) {
    *       case 'invite_team_member':
@@ -159,7 +155,6 @@ export interface PillarProviderProps {
    *
    * <PillarProvider
    *   helpCenter="my-app"
-   *   publicKey="pk_..."
    *   cards={{
    *     invite_members: InviteMembersCard,
    *     confirm_delete: ConfirmDeleteCard,
@@ -185,7 +180,6 @@ const PillarContext = createContext<PillarContextValue | null>(null);
 
 export function PillarProvider({
   helpCenter,
-  publicKey,
   config,
   onTask,
   cards,
@@ -232,7 +226,6 @@ export function PillarProvider({
         // Initialize new instance
         const instance = await Pillar.init({
           helpCenter,
-          publicKey,
           ...config,
         });
 
@@ -267,7 +260,7 @@ export function PillarProvider({
       // Note: We intentionally don't call Pillar.destroy() here
       // The singleton persists to maintain state across route changes
     };
-  }, [helpCenter, publicKey]); // Re-initialize if credentials change
+  }, [helpCenter]); // Re-initialize if helpCenter changes
 
   // Update state when SDK state changes
   useEffect(() => {
