@@ -1,6 +1,6 @@
 {
   "name": "@pillar-ai/react",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "React bindings for Pillar Embedded Help SDK",
   "type": "module",
   "main": "./dist/index.esm.js",
