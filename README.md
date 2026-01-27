@@ -1,11 +1,32 @@
 # @pillar-ai/react
 
-React bindings for the Pillar Embedded Help SDK.
+React bindings for the Pillar Embedded Help SDK — Add contextual help and AI-powered assistance to your React application.
+
+[![npm version](https://img.shields.io/npm/v/@pillar-ai/react)](https://www.npmjs.com/package/@pillar-ai/react)
+[![npm downloads](https://img.shields.io/npm/dm/@pillar-ai/react)](https://www.npmjs.com/package/@pillar-ai/react)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)](https://www.typescriptlang.org/)
+
+## Features
+
+- **React Hooks** — `usePillar` and `useHelpPanel` for idiomatic React integration
+- **Components** — `PillarProvider`, `PillarPanel`, and `Tooltip` components
+- **Next.js Support** — Works with Next.js App Router and Pages Router
+- **Type-Safe Actions** — Full TypeScript support for custom actions
+- **Custom Cards** — Render custom UI for inline actions
+
+## Documentation
+
+**[View Full Documentation](https://trypillar.com/docs)** | [React Guide](https://trypillar.com/docs/react/installation) | [API Reference](https://trypillar.com/docs/reference/react)
 
 ## Installation
 
 ```bash
 npm install @pillar-ai/react
+# or
+pnpm add @pillar-ai/react
+# or
+yarn add @pillar-ai/react
 ```
 
 ## Quick Start
@@ -20,6 +41,38 @@ function App() {
     <PillarProvider helpCenter="your-help-center">
       <MyApp />
     </PillarProvider>
+  );
+}
+```
+
+### Next.js App Router
+
+For Next.js App Router, create a client wrapper component:
+
+```tsx
+// providers/PillarClientProvider.tsx
+'use client';
+
+import { PillarProvider } from '@pillar-ai/react';
+
+export function PillarClientProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <PillarProvider helpCenter="your-help-center">
+      {children}
+    </PillarProvider>
+  );
+}
+
+// app/layout.tsx
+import { PillarClientProvider } from '@/providers/PillarClientProvider';
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <PillarClientProvider>{children}</PillarClientProvider>
+      </body>
+    </html>
   );
 }
 ```
@@ -171,6 +224,19 @@ function App() {
   );
 }
 ```
+
+## Related Packages
+
+| Package | Description |
+|---------|-------------|
+| [@pillar-ai/sdk](https://github.com/pillarhq/sdk) | Core vanilla JavaScript SDK |
+| [@pillar-ai/vue](https://github.com/pillarhq/sdk-vue) | Vue 3 bindings |
+| [@pillar-ai/svelte](https://github.com/pillarhq/sdk-svelte) | Svelte bindings |
+
+## Requirements
+
+- React 17.0.0 or higher
+- React DOM 17.0.0 or higher
 
 ## License
 
