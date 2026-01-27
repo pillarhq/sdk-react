@@ -1,5 +1,5 @@
 /**
- * @pillar-ai/react - React bindings for Pillar Embedded Help SDK
+ * @pillar-ai/react - React bindings for Pillar SDK
  * 
  * @example
  * ```tsx
@@ -7,7 +7,7 @@
  * 
  * function App() {
  *   return (
- *     <PillarProvider helpCenter="your-help-center" publicKey="pk_live_xxx">
+ *     <PillarProvider productKey="your-product-key">
  *       <MyApp />
  *     </PillarProvider>
  *   );
@@ -20,7 +20,7 @@
  *   return (
  *     <div>
  *       <h1>Welcome!</h1>
- *       <button onClick={toggle}>Get Help</button>
+ *       <button onClick={toggle}>Open Co-pilot</button>
  *     </div>
  *   );
  * }
@@ -29,8 +29,7 @@
  * function AppWithCustomPanel() {
  *   return (
  *     <PillarProvider 
- *       helpCenter="your-help-center" 
- *       publicKey="pk_live_xxx"
+ *       productKey="your-product-key"
  *       config={{ panel: { container: 'manual' } }}
  *     >
  *       <div className="layout">

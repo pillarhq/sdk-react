@@ -110,8 +110,16 @@ export interface PillarContextValue {
 }
 
 export interface PillarProviderProps {
-  /** Help center subdomain or identifier */
-  helpCenter: string;
+  /**
+   * Your product key from the Pillar app.
+   * Get it at app.trypillar.com
+   */
+  productKey?: string;
+
+  /**
+   * @deprecated Use `productKey` instead. Will be removed in v1.0.
+   */
+  helpCenter?: string;
 
   /**
    * Additional SDK configuration
@@ -120,7 +128,7 @@ export interface PillarProviderProps {
    * - `panel.useShadowDOM`: Whether to isolate styles in Shadow DOM (default: false).
    *   Set to false to let custom cards inherit your app's CSS (Tailwind, etc.)
    */
-  config?: Omit<PillarConfig, "helpCenter">;
+  config?: Omit<PillarConfig, "productKey" | "helpCenter">;
 
   /**
    * Handler called when a task action is triggered from the chat.
@@ -129,7 +137,7 @@ export interface PillarProviderProps {
    * @example
    * ```tsx
    * <PillarProvider
-   *   helpCenter="my-app"
+   *   productKey="my-product-key"
    *   onTask={(task) => {
    *     switch (task.name) {
    *       case 'invite_team_member':
@@ -154,7 +162,7 @@ export interface PillarProviderProps {
    * import { InviteMembersCard } from './cards/InviteMembersCard';
    *
    * <PillarProvider
-   *   helpCenter="my-app"
+   *   productKey="my-product-key"
    *   cards={{
    *     invite_members: InviteMembersCard,
    *     confirm_delete: ConfirmDeleteCard,
@@ -179,6 +187,7 @@ const PillarContext = createContext<PillarContextValue | null>(null);
 // ============================================================================
 
 export function PillarProvider({
+  productKey,
   helpCenter,
   config,
   onTask,
@@ -189,9 +198,21 @@ export function PillarProvider({
   const [state, setState] = useState<PillarState>("uninitialized");
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
+  // Support both productKey (new) and helpCenter (deprecated)
+  const resolvedKey = productKey ?? helpCenter;
+
   // Keep a ref to the latest onTask callback to avoid re-subscribing
   const onTaskRef = useRef(onTask);
   onTaskRef.current = onTask;
+
+  // Warn about deprecated helpCenter usage
+  useEffect(() => {
+    if (helpCenter && !productKey) {
+      console.warn(
+        '[Pillar React] "helpCenter" prop is deprecated. Use "productKey" instead.'
+      );
+    }
+  }, []);
 
   // Keep a ref to cards to access latest versions
   const cardsRef = useRef(cards);
@@ -225,7 +246,7 @@ export function PillarProvider({
 
         // Initialize new instance
         const instance = await Pillar.init({
-          helpCenter,
+          productKey: resolvedKey,
           ...config,
         });
 
@@ -260,7 +281,7 @@ export function PillarProvider({
       // Note: We intentionally don't call Pillar.destroy() here
       // The singleton persists to maintain state across route changes
     };
-  }, [helpCenter]); // Re-initialize if helpCenter changes
+  }, [resolvedKey]); // Re-initialize if productKey changes
 
   // Update state when SDK state changes
   useEffect(() => {

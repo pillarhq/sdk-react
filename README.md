@@ -1,19 +1,24 @@
 # @pillar-ai/react
 
-React bindings for the Pillar Embedded Help SDK — Add contextual help and AI-powered assistance to your React application.
+React bindings for Pillar — Cursor for your product.
 
 [![npm version](https://img.shields.io/npm/v/@pillar-ai/react)](https://www.npmjs.com/package/@pillar-ai/react)
 [![npm downloads](https://img.shields.io/npm/dm/@pillar-ai/react)](https://www.npmjs.com/package/@pillar-ai/react)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)](https://www.typescriptlang.org/)
 
+## What is Pillar?
+
+Pillar is an embedded AI co-pilot that helps users complete tasks, not just answer questions. Users say what they want, and Pillar uses your UI to make it happen — navigating pages, pre-filling forms, and calling your APIs.
+
 ## Features
 
+- **Task Execution** — Navigate pages, pre-fill forms, call APIs on behalf of users
 - **React Hooks** — `usePillar` and `useHelpPanel` for idiomatic React integration
-- **Components** — `PillarProvider`, `PillarPanel`, and `Tooltip` components
-- **Next.js Support** — Works with Next.js App Router and Pages Router
-- **Type-Safe Actions** — Full TypeScript support for custom actions
-- **Custom Cards** — Render custom UI for inline actions
+- **Next.js Support** — Works with App Router and Pages Router
+- **Multi-Step Plans** — Chain actions into workflows for complex tasks
+- **Type-Safe Actions** — Full TypeScript support for action definitions
+- **Custom Action Cards** — Render React components for confirmations and data input
 
 ## Documentation
 
@@ -31,14 +36,46 @@ yarn add @pillar-ai/react
 
 ## Quick Start
 
-Wrap your app with `PillarProvider`:
+### 1. Get Your Product Key
+
+First, register your product in the [Pillar app](https://app.trypillar.com):
+
+1. Sign up or log in at [app.trypillar.com](https://app.trypillar.com)
+2. Create a new product
+3. Copy your **Product Key** from the settings page
+
+### 2. Add the Provider
+
+Wrap your app with `PillarProvider` and define actions:
 
 ```tsx
 import { PillarProvider } from '@pillar-ai/react';
 
+const actions = {
+  export_to_csv: {
+    type: 'trigger' as const,
+    label: 'Export to CSV',
+    description: 'Export current data to CSV file',
+  },
+  go_to_settings: {
+    type: 'navigate' as const,
+    label: 'Open Settings',
+    description: 'Navigate to settings page',
+    path: '/settings',
+  },
+};
+
 function App() {
   return (
-    <PillarProvider helpCenter="your-help-center">
+    <PillarProvider
+      productKey="your-product-key"
+      actions={actions}
+      onTask={(actionName, data) => {
+        if (actionName === 'export_to_csv') {
+          downloadCSV();
+        }
+      }}
+    >
       <MyApp />
     </PillarProvider>
   );
@@ -54,15 +91,36 @@ For Next.js App Router, create a client wrapper component:
 'use client';
 
 import { PillarProvider } from '@pillar-ai/react';
+import { useRouter } from 'next/navigation';
+
+const actions = {
+  go_to_settings: {
+    type: 'navigate' as const,
+    label: 'Open Settings',
+    description: 'Navigate to settings page',
+  },
+};
 
 export function PillarClientProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+
   return (
-    <PillarProvider helpCenter="your-help-center">
+    <PillarProvider
+      productKey="your-product-key"
+      actions={actions}
+      onTask={(actionName, data) => {
+        if (actionName === 'go_to_settings') {
+          router.push('/settings');
+        }
+      }}
+    >
       {children}
     </PillarProvider>
   );
 }
+```
 
+```tsx
 // app/layout.tsx
 import { PillarClientProvider } from '@/providers/PillarClientProvider';
 
@@ -77,75 +135,39 @@ export default function RootLayout({ children }) {
 }
 ```
 
-## Components
+## Defining Actions
 
-### PillarProvider
-
-The root provider that initializes the SDK and provides context to child components.
+Actions define what your co-pilot can do. When users make requests, Pillar matches intent to actions:
 
 ```tsx
-<PillarProvider
-  helpCenter="your-help-center"
-  config={{
-    panel: { position: 'right', mode: 'push' },
-    edgeTrigger: { enabled: true },
-    theme: { mode: 'auto' },
-  }}
->
-  {children}
-</PillarProvider>
-```
+import type { ActionDefinitions } from '@pillar-ai/react';
 
-### Custom Trigger Button
+const actions = {
+  // Navigation actions
+  go_to_billing: {
+    type: 'navigate' as const,
+    label: 'Open Billing',
+    description: 'Navigate to billing and subscription settings',
+  },
 
-To use your own button instead of the built-in edge trigger:
+  // Trigger actions that execute code
+  export_report: {
+    type: 'trigger' as const,
+    label: 'Export Report',
+    description: 'Export the current report to PDF or CSV',
+  },
 
-```tsx
-<PillarProvider
-  helpCenter="your-help-center"
-  config={{ edgeTrigger: { enabled: false } }}
->
-  <MyApp />
-</PillarProvider>
-
-function HelpButton() {
-  const { toggle } = useHelpPanel();
-  return <button onClick={toggle}>Get Help</button>;
-}
-```
-
-### Tooltip
-
-Attach contextual tooltips to any element:
-
-```tsx
-import { Tooltip } from '@pillar-ai/react';
-
-<Tooltip tooltipId="welcome-tooltip">
-  <button>Hover me for help</button>
-</Tooltip>;
-```
-
-### PillarPanel
-
-For custom panel placement (when using `container: 'manual'`):
-
-```tsx
-import { PillarProvider, PillarPanel } from '@pillar-ai/react';
-
-function App() {
-  return (
-    <PillarProvider
-      helpCenter="your-help-center"
-      config={{ panel: { container: 'manual' } }}
-    >
-      <div className="layout">
-        <main>Your content</main>
-        <PillarPanel className="sidebar-panel" />
-      </div>
-    </PillarProvider>
-  );
-}
+  // Actions with data schemas (AI extracts parameters)
+  invite_team_member: {
+    type: 'trigger' as const,
+    label: 'Invite Team Member',
+    description: 'Send an invitation to join the team',
+    dataSchema: {
+      email: { type: 'string' as const, required: true },
+      role: { type: 'string' as const, enum: ['admin', 'member', 'viewer'] },
+    },
+  },
+} satisfies ActionDefinitions;
 ```
 
 ## Hooks
@@ -162,67 +184,109 @@ function MyComponent() {
 
   if (!isReady) return <div>Loading...</div>;
 
-  return <div>Panel is {isOpen ? 'open' : 'closed'}</div>;
+  return <div>Co-pilot is {isOpen ? 'open' : 'closed'}</div>;
 }
 ```
 
 ### useHelpPanel
 
-Control the help panel:
+Control the co-pilot panel:
 
 ```tsx
 import { useHelpPanel } from '@pillar-ai/react';
 
-function HelpButton() {
+function CopilotButton() {
   const { open, close, toggle, isOpen } = useHelpPanel();
 
   return (
-    <button onClick={toggle}>{isOpen ? 'Close Help' : 'Get Help'}</button>
+    <button onClick={toggle}>
+      {isOpen ? 'Close Co-pilot' : 'Open Co-pilot'}
+    </button>
   );
 }
 ```
 
-## Type-Safe Actions
+## Components
 
-Define custom actions with full TypeScript support:
+### PillarProvider
+
+The root provider that initializes the SDK:
 
 ```tsx
-import { PillarProvider, usePillar } from '@pillar-ai/react';
-import type { ActionDefinitions } from '@pillar-ai/react';
+<PillarProvider
+  productKey="your-product-key"
+  actions={actions}
+  onTask={(actionName, data) => { /* handle actions */ }}
+  config={{
+    panel: { position: 'right', mode: 'push' },
+    edgeTrigger: { enabled: true },
+    theme: { mode: 'auto' },
+  }}
+>
+  {children}
+</PillarProvider>
+```
 
-// Define your actions
-const actions = {
-  openSettings: {
-    type: 'navigate' as const,
-    label: 'Open Settings',
-    description: 'Navigate to settings page',
-  },
-  showNotification: {
-    type: 'trigger' as const,
-    label: 'Show Notification',
-    description: 'Display a notification',
-    dataSchema: {
-      message: { type: 'string' as const, required: true },
-    },
-  },
-} satisfies ActionDefinitions;
+### PillarPanel
+
+For custom panel placement:
+
+```tsx
+import { PillarProvider, PillarPanel } from '@pillar-ai/react';
 
 function App() {
   return (
     <PillarProvider
-      helpCenter="your-help-center"
-      actions={actions}
-      onTask={(type, data) => {
-        // TypeScript knows the exact shape of data based on type
-        if (type === 'showNotification') {
-          console.log(data.message); // Typed!
-        }
-      }}
+      productKey="your-product-key"
+      config={{ panel: { container: 'manual' } }}
     >
-      <MyApp />
+      <div className="layout">
+        <main>Your content</main>
+        <PillarPanel className="sidebar-panel" />
+      </div>
     </PillarProvider>
   );
 }
+```
+
+### Tooltip
+
+Attach contextual tooltips to elements:
+
+```tsx
+import { Tooltip } from '@pillar-ai/react';
+
+<Tooltip tooltipId="export-help">
+  <button>Export Data</button>
+</Tooltip>
+```
+
+## Custom Action Cards
+
+Render custom UI for inline actions:
+
+```tsx
+import { PillarProvider } from '@pillar-ai/react';
+import type { CardComponentProps } from '@pillar-ai/react';
+
+function InviteCard({ data, onConfirm, onCancel }: CardComponentProps<{ email: string; role: string }>) {
+  return (
+    <div className="card">
+      <p>Invite {data.email} as {data.role}?</p>
+      <button onClick={() => onConfirm()}>Send Invite</button>
+      <button onClick={onCancel}>Cancel</button>
+    </div>
+  );
+}
+
+<PillarProvider
+  productKey="your-product-key"
+  cards={{
+    invite_team_member: InviteCard,
+  }}
+>
+  {children}
+</PillarProvider>
 ```
 
 ## Related Packages
