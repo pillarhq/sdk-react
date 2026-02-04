@@ -5,10 +5,13 @@
 
 import {
   Pillar,
+  scanPageDirect,
   type CardCallbacks,
+  type CompactScanResult,
   type PillarConfig,
   type PillarEvents,
   type PillarState,
+  type ScanOptions,
   type TaskExecutePayload,
   type ThemeConfig,
 } from "@pillar-ai/sdk";
@@ -102,6 +105,15 @@ export interface PillarContextValue {
   /** Enable or disable the text selection "Ask AI" popover */
   setTextSelectionEnabled: (enabled: boolean) => void;
 
+  /** Enable or disable DOM scanning */
+  setDOMScanningEnabled: (enabled: boolean) => void;
+
+  /** Whether DOM scanning is enabled */
+  isDOMScanningEnabled: boolean;
+
+  /** Manually scan the page and get the compact result */
+  scanPage: (options?: ScanOptions) => CompactScanResult | null;
+
   /** Subscribe to SDK events */
   on: <K extends keyof PillarEvents>(
     event: K,
@@ -172,6 +184,17 @@ export interface PillarProviderProps {
    */
   cards?: Record<string, CardComponent>;
 
+  /**
+   * Enable DOM scanning to send page context with messages.
+   * When enabled, interactable elements and text content are captured and sent to the LLM.
+   * @default false
+   */
+  domScanning?: boolean;
+
+  /**
+   * Enable DOM scanning dev mode to preview the scanned page before sending.
+   * Shows a modal with the AST tree visualization before each message is sent.
+   * Useful for debugging what context will be sent to the LLM.
   /** Children components */
   children: ReactNode;
 }
@@ -192,11 +215,13 @@ export function PillarProvider({
   config,
   onTask,
   cards,
+  domScanning,
   children,
 }: PillarProviderProps): React.ReactElement {
   const [pillar, setPillar] = useState<Pillar | null>(null);
   const [state, setState] = useState<PillarState>("uninitialized");
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isDOMScanningEnabled, setIsDOMScanningEnabledState] = useState(domScanning ?? false);
 
   // Support both productKey (new) and helpCenter (deprecated)
   const resolvedKey = productKey ?? helpCenter;
@@ -232,6 +257,11 @@ export function PillarProvider({
             setPillar(existingInstance);
             setState(existingInstance.state);
 
+            // Apply DOM scanning settings to existing instance
+            if (domScanning !== undefined) {
+              existingInstance.setDOMScanningEnabled(domScanning);
+            }
+
             // Re-subscribe to events
             existingInstance.on("panel:open", () => {
               setIsPanelOpen(true);
@@ -248,6 +278,11 @@ export function PillarProvider({
         const instance = await Pillar.init({
           productKey: resolvedKey,
           ...config,
+          domScanning: {
+            ...config?.domScanning,
+            // Explicit prop overrides config value
+            enabled: domScanning ?? config?.domScanning?.enabled ?? false,
+          },
         });
 
         if (mounted) {
@@ -311,6 +346,16 @@ export function PillarProvider({
       return unsubscribe;
     }
   }, [pillar]);
+
+  // Sync DOM scanning props with SDK when they change
+  useEffect(() => {
+    if (pillar) {
+      if (domScanning !== undefined) {
+        pillar.setDOMScanningEnabled(domScanning);
+        setIsDOMScanningEnabledState(domScanning);
+      }
+    }
+  }, [pillar, domScanning]);
 
   // Register custom card renderers
   useEffect(() => {
@@ -424,6 +469,22 @@ export function PillarProvider({
     [pillar]
   );
 
+  const setDOMScanningEnabled = useCallback(
+    (enabled: boolean) => {
+      pillar?.setDOMScanningEnabled(enabled);
+      setIsDOMScanningEnabledState(enabled);
+    },
+    [pillar]
+  );
+
+  const scanPage = useCallback(
+    (options?: ScanOptions): CompactScanResult | null => {
+      if (!pillar) return null;
+      return scanPageDirect(options);
+    },
+    [pillar]
+  );
+
   const on = useCallback(
     <K extends keyof PillarEvents>(
       event: K,
@@ -450,6 +511,9 @@ export function PillarProvider({
       navigate,
       setTheme,
       setTextSelectionEnabled,
+      setDOMScanningEnabled,
+      isDOMScanningEnabled,
+      scanPage,
       on,
     }),
     [
@@ -465,6 +529,9 @@ export function PillarProvider({
       navigate,
       setTheme,
       setTextSelectionEnabled,
+      setDOMScanningEnabled,
+      isDOMScanningEnabled,
+      scanPage,
       on,
     ]
   );

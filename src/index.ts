@@ -88,5 +88,13 @@ export type {
     ActionNames,
     // Chat context for escalation
     ChatContext,
+    // DOM Scanning types
+    DOMScanningConfig,
+    ResolvedDOMScanningConfig,
+    ScanOptions,
+    CompactScanResult,
+    InteractionType,
+    // DOM Scanner utilities
+    scanPageDirect,
 } from '@pillar-ai/sdk';
 
