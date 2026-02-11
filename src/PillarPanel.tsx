@@ -25,8 +25,7 @@ export interface PillarPanelProps extends HTMLAttributes<HTMLDivElement> {
  * @example
  * ```tsx
  * <PillarProvider 
- *   helpCenter="my-help" 
- *   publicKey="pk_xxx"
+ *   productKey="my-product-key"
  *   config={{ panel: { container: 'manual' } }}
  * >
  *   <div className="my-layout">
