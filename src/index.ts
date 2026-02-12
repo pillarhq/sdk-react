@@ -58,6 +58,7 @@ export { PillarPanel, type PillarPanelProps } from './PillarPanel';
 // Hooks
 export { useHelpPanel, type UseHelpPanelResult } from './hooks/useHelpPanel';
 export { usePillar, type UsePillarResult, type TypedUsePillarResult } from './hooks/usePillar';
+export { usePillarAction } from './hooks/usePillarAction';
 
 // Re-export types from core SDK for convenience
 export type {
@@ -86,6 +87,9 @@ export type {
     SyncActionDefinitions,
     ActionDataType,
     ActionNames,
+    // Unified action schema (new API)
+    ActionResult,
+    ActionSchema,
     // Chat context for escalation
     ChatContext,
     // DOM Scanning types
