@@ -1,15 +1,15 @@
 /**
- * usePillarAction Hook
+ * usePillarTool Hook
  *
- * Register one or more actions with co-located metadata and handlers.
- * Actions are registered on mount and unregistered on unmount.
+ * Register one or more tools with co-located metadata and handlers.
+ * Tools are registered on mount and unregistered on unmount.
  *
- * @example Single action
+ * @example Single tool
  * ```tsx
- * import { usePillarAction } from '@pillar-ai/react';
+ * import { usePillarTool } from '@pillar-ai/react';
  *
  * function CartButton() {
- *   usePillarAction({
+ *   usePillarTool({
  *     name: 'add_to_cart',
  *     description: 'Add a product to the shopping cart',
  *     inputSchema: {
@@ -30,12 +30,12 @@
  * }
  * ```
  *
- * @example Multiple actions
+ * @example Multiple tools
  * ```tsx
- * import { usePillarAction } from '@pillar-ai/react';
+ * import { usePillarTool } from '@pillar-ai/react';
  *
  * function BillingPage() {
- *   usePillarAction([
+ *   usePillarTool([
  *     {
  *       name: 'get_current_plan',
  *       description: 'Get the current billing plan',
@@ -62,33 +62,33 @@
  */
 
 import { useEffect, useRef, useMemo } from 'react';
-import type { ActionSchema } from '@pillar-ai/sdk';
+import type { ToolSchema } from '@pillar-ai/sdk';
 import { usePillarContext } from '../PillarProvider';
 
 /**
- * Register a single Pillar action with co-located metadata and handler.
+ * Register a single Pillar tool with co-located metadata and handler.
  */
-export function usePillarAction<TInput = Record<string, unknown>>(
-  schema: ActionSchema<TInput>
+export function usePillarTool<TInput = Record<string, unknown>>(
+  schema: ToolSchema<TInput>
 ): void;
 
 /**
- * Register multiple Pillar actions with co-located metadata and handlers.
+ * Register multiple Pillar tools with co-located metadata and handlers.
  */
-export function usePillarAction(schemas: ActionSchema[]): void;
+export function usePillarTool(schemas: ToolSchema[]): void;
 
 /**
- * Register one or more Pillar actions with co-located metadata and handlers.
+ * Register one or more Pillar tools with co-located metadata and handlers.
  *
- * The actions are registered when the component mounts and automatically
+ * The tools are registered when the component mounts and automatically
  * unregistered when it unmounts. The `execute` functions always capture
  * the latest React state and props via refs, so you don't need to worry
  * about stale closures.
  *
- * @param schemaOrSchemas - Single action schema or array of action schemas
+ * @param schemaOrSchemas - Single tool schema or array of tool schemas
  */
-export function usePillarAction<TInput = Record<string, unknown>>(
-  schemaOrSchemas: ActionSchema<TInput> | ActionSchema[]
+export function usePillarTool<TInput = Record<string, unknown>>(
+  schemaOrSchemas: ToolSchema<TInput> | ToolSchema[]
 ): void {
   const { pillar } = usePillarContext();
 
@@ -102,8 +102,8 @@ export function usePillarAction<TInput = Record<string, unknown>>(
   const schemasRef = useRef(schemas);
   schemasRef.current = schemas;
 
-  // Stable dependency key for the effect (action names joined)
-  const actionNamesKey = useMemo(
+  // Stable dependency key for the effect (tool names joined)
+  const toolNamesKey = useMemo(
     () => schemas.map((s) => s.name).join(','),
     [schemas]
   );
@@ -111,19 +111,22 @@ export function usePillarAction<TInput = Record<string, unknown>>(
   useEffect(() => {
     if (!pillar) return;
 
-    // Register all actions and collect unsubscribe functions
+    // Register all tools and collect unsubscribe functions
     const unsubscribes = schemasRef.current.map((schema, index) => {
-      return pillar.defineAction({
+      return pillar.defineTool({
         ...schema,
         // Wrap execute to always use the latest ref version
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         execute: (input: any) => schemasRef.current[index].execute(input),
-      } as ActionSchema);
+      } as ToolSchema);
     });
 
-    // Cleanup: unregister all actions
+    // Cleanup: unregister all tools
     return () => {
       unsubscribes.forEach((unsub) => unsub());
     };
-  }, [pillar, actionNamesKey]);
+  }, [pillar, toolNamesKey]);
 }
+
+/** @deprecated Use usePillarTool instead */
+export const usePillarAction = usePillarTool;

@@ -58,7 +58,7 @@ export { PillarPanel, type PillarPanelProps } from './PillarPanel';
 // Hooks
 export { useHelpPanel, type UseHelpPanelResult } from './hooks/useHelpPanel';
 export { usePillar, type UsePillarResult, type TypedUsePillarResult } from './hooks/usePillar';
-export { usePillarAction } from './hooks/usePillarAction';
+export { usePillarTool, usePillarAction } from './hooks/usePillarTool';
 
 // Re-export types from core SDK for convenience
 export type {
@@ -82,14 +82,23 @@ export type {
     CardCallbacks,
     CardRenderer,
     SidebarTabConfig,
-    // Action types for type-safe onTask
+    // Tool types for type-safe onTask
+    ToolDefinitions,
+    SyncToolDefinitions,
+    ToolDataType,
+    ToolNames,
+    // Unified tool schema (new API)
+    ToolExecuteResult,
+    ToolSchema,
+    ToolType,
+    // Backwards compatibility aliases (deprecated)
     ActionDefinitions,
     SyncActionDefinitions,
     ActionDataType,
     ActionNames,
-    // Unified action schema (new API)
     ActionResult,
     ActionSchema,
+    ActionType,
     // Chat context for escalation
     ChatContext,
     // DOM Scanning types
