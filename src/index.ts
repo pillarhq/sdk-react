@@ -101,13 +101,19 @@ export type {
     ActionType,
     // Chat context for escalation
     ChatContext,
-    // DOM Scanning types
+    // DOM Scanning types (deprecated - feature is disabled)
+    /** @deprecated DOM scanning is disabled */
     DOMScanningConfig,
+    /** @deprecated DOM scanning is disabled */
     ResolvedDOMScanningConfig,
+    /** @deprecated DOM scanning is disabled */
     ScanOptions,
+    /** @deprecated DOM scanning is disabled */
     CompactScanResult,
+    /** @deprecated DOM scanning is disabled */
     InteractionType,
-    // DOM Scanner utilities
+    // DOM Scanner utilities (deprecated - feature is disabled)
+    /** @deprecated DOM scanning is disabled */
     scanPageDirect,
 } from '@pillar-ai/sdk';
 

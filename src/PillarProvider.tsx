@@ -105,10 +105,16 @@ export interface PillarContextValue {
   /** Enable or disable the text selection "Ask AI" popover */
   setTextSelectionEnabled: (enabled: boolean) => void;
 
-  /** Enable or disable DOM scanning */
+  /**
+   * Enable or disable DOM scanning.
+   * @deprecated DOM scanning is currently disabled and this method has no effect.
+   */
   setDOMScanningEnabled: (enabled: boolean) => void;
 
-  /** Whether DOM scanning is enabled */
+  /**
+   * Whether DOM scanning is enabled.
+   * @deprecated Always returns false - DOM scanning is disabled.
+   */
   isDOMScanningEnabled: boolean;
 
   /** Manually scan the page and get the compact result */
@@ -186,8 +192,7 @@ export interface PillarProviderProps {
 
   /**
    * Enable DOM scanning to send page context with messages.
-   * When enabled, interactable elements and text content are captured and sent to the LLM.
-   * @default false
+   * @deprecated DOM scanning is currently disabled. This prop has no effect.
    */
   domScanning?: boolean;
 
@@ -215,13 +220,14 @@ export function PillarProvider({
   config,
   onTask,
   cards,
-  domScanning,
+  domScanning: _domScanning, // Deprecated - DOM scanning is disabled
   children,
 }: PillarProviderProps): React.ReactElement {
   const [pillar, setPillar] = useState<Pillar | null>(null);
   const [state, setState] = useState<PillarState>("uninitialized");
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [isDOMScanningEnabled, setIsDOMScanningEnabledState] = useState(domScanning ?? false);
+  // DOM scanning is disabled - always false
+  const isDOMScanningEnabled = false;
 
   // Support both productKey (new) and helpCenter (deprecated)
   const resolvedKey = productKey ?? helpCenter;
@@ -257,11 +263,6 @@ export function PillarProvider({
             setPillar(existingInstance);
             setState(existingInstance.state);
 
-            // Apply DOM scanning settings to existing instance
-            if (domScanning !== undefined) {
-              existingInstance.setDOMScanningEnabled(domScanning);
-            }
-
             // Re-subscribe to events
             existingInstance.on("panel:open", () => {
               setIsPanelOpen(true);
@@ -275,14 +276,10 @@ export function PillarProvider({
         }
 
         // Initialize new instance
+        // Note: DOM scanning is disabled, config.domScanning is ignored
         const instance = await Pillar.init({
           productKey: resolvedKey,
           ...config,
-          domScanning: {
-            ...config?.domScanning,
-            // Explicit prop overrides config value
-            enabled: domScanning ?? config?.domScanning?.enabled ?? false,
-          },
         });
 
         if (mounted) {
@@ -347,15 +344,7 @@ export function PillarProvider({
     }
   }, [pillar]);
 
-  // Sync DOM scanning props with SDK when they change
-  useEffect(() => {
-    if (pillar) {
-      if (domScanning !== undefined) {
-        pillar.setDOMScanningEnabled(domScanning);
-        setIsDOMScanningEnabledState(domScanning);
-      }
-    }
-  }, [pillar, domScanning]);
+  // DOM scanning is disabled - no sync needed
 
   // Register custom card renderers
   useEffect(() => {
@@ -469,12 +458,12 @@ export function PillarProvider({
     [pillar]
   );
 
+  // DOM scanning is disabled - this is a no-op
   const setDOMScanningEnabled = useCallback(
-    (enabled: boolean) => {
-      pillar?.setDOMScanningEnabled(enabled);
-      setIsDOMScanningEnabledState(enabled);
+    (_enabled: boolean) => {
+      // DOM scanning is disabled - this method has no effect
     },
-    [pillar]
+    []
   );
 
   const scanPage = useCallback(
