@@ -61,21 +61,9 @@
  * ```
  */
 
-import { useEffect, useRef, useMemo } from 'react';
-import type { ToolSchema } from '@pillar-ai/sdk';
-import { usePillarContext } from '../PillarProvider';
-
-/**
- * Register a single Pillar tool with co-located metadata and handler.
- */
-export function usePillarTool<TInput = Record<string, unknown>>(
-  schema: ToolSchema<TInput>
-): void;
-
-/**
- * Register multiple Pillar tools with co-located metadata and handlers.
- */
-export function usePillarTool(schemas: ToolSchema[]): void;
+import type { ToolSchema } from "@pillar-ai/sdk";
+import { useEffect, useMemo, useRef } from "react";
+import { usePillarContext } from "../PillarProvider";
 
 /**
  * Register one or more Pillar tools with co-located metadata and handlers.
@@ -87,14 +75,15 @@ export function usePillarTool(schemas: ToolSchema[]): void;
  *
  * @param schemaOrSchemas - Single tool schema or array of tool schemas
  */
-export function usePillarTool<TInput = Record<string, unknown>>(
-  schemaOrSchemas: ToolSchema<TInput> | ToolSchema[]
+export function usePillarTool(
+  schemaOrSchemas: ToolSchema | ToolSchema[]
 ): void {
   const { pillar } = usePillarContext();
 
   // Normalize to array for consistent handling
   const schemas = useMemo(
-    () => (Array.isArray(schemaOrSchemas) ? schemaOrSchemas : [schemaOrSchemas]),
+    () =>
+      Array.isArray(schemaOrSchemas) ? schemaOrSchemas : [schemaOrSchemas],
     [schemaOrSchemas]
   );
 
@@ -104,7 +93,7 @@ export function usePillarTool<TInput = Record<string, unknown>>(
 
   // Stable dependency key for the effect (tool names joined)
   const toolNamesKey = useMemo(
-    () => schemas.map((s) => s.name).join(','),
+    () => schemas.map((s) => s.name).join(","),
     [schemas]
   );
 
