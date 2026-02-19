@@ -76,7 +76,8 @@ import { usePillarContext } from "../PillarProvider";
  * @param schemaOrSchemas - Single tool schema or array of tool schemas
  */
 export function usePillarTool(
-  schemaOrSchemas: ToolSchema | ToolSchema[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  schemaOrSchemas: ToolSchema<any> | ToolSchema<any>[]
 ): void {
   const { pillar } = usePillarContext();
 
