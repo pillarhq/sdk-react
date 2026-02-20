@@ -38,7 +38,11 @@ import { createRoot, type Root } from "react-dom/client";
 export interface CardComponentProps<T = Record<string, unknown>> {
   /** Data extracted by the AI for this action */
   data: T;
-  /** Called when user confirms the action */
+  /**
+   * Called when user confirms the action.
+   * WARNING: Data passed here flows through the SDK pipeline (telemetry,
+   * agent context, logs). Never include secrets, tokens, or PII.
+   */
   onConfirm: (modifiedData?: Record<string, unknown>) => void;
   /** Called when user cancels the action */
   onCancel: () => void;
