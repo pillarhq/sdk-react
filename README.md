@@ -32,7 +32,7 @@ Pillar understands the intent, builds a multi-step plan, and executes it client-
 
 ## Documentation
 
-**[View Full Documentation](https://trypillar.com/docs)** | [React Guide](https://trypillar.com/docs/react/installation) | [API Reference](https://trypillar.com/docs/reference/react)
+**[View Full Documentation](https://trypillar.com/docs)** | [React Guide](https://trypillar.com/docs/get-started/quickstart?framework=react) | [API Reference](https://trypillar.com/docs/reference/react)
 
 ## Installation
 
