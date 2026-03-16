@@ -574,27 +574,70 @@ The AI automatically creates multi-step plans when a user's request requires mul
 
 Each step executes your registered tool handlers automatically.
 
-## Custom Cards (Advanced)
+## Inline UI with Render Components
 
-For `inline_ui` tools, you can render custom React components in the chat:
+For `inline_ui` tools, use the `render` prop to display custom React components in the chat. The render component is co-located with your tool definition:
 
 ```tsx
-// Define the tool
-show_product: {
-  type: 'inline_ui',
-  description: 'Show a product preview card',
+import { usePillarTool } from '@pillar-ai/react';
+
+function ProductTools() {
+  usePillarTool({
+    name: 'show_product',
+    description: 'Show a product preview card',
+    type: 'inline_ui',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        productId: { type: 'string', description: 'Product ID to display' },
+      },
+      required: ['productId'],
+    },
+    execute: async ({ productId }) => {
+      const product = await api.getProduct(productId);
+      return { product };
+    },
+    render: ({ data, onConfirm, onCancel }) => (
+      <ProductCard
+        product={data.product}
+        onSelect={() => onConfirm()}
+        onDismiss={() => onCancel()}
+      />
+    ),
+  });
+
+  return null;
+}
+```
+
+The `render` component receives:
+- `data` — the return value from `execute`
+- `onConfirm(modifiedData?)` — call when the user confirms/completes the action
+- `onCancel()` — call when the user cancels
+- `onStateChange?(state, message?)` — optional callback for loading/success/error states
+
+You can also pass a named component instead of an inline function:
+
+```tsx
+function ProductCard({ data, onConfirm, onCancel }: ToolRenderProps<{ product: Product }>) {
+  return (
+    <div className="p-4 border rounded">
+      <h3>{data.product.name}</h3>
+      <p>${data.product.price}</p>
+      <button onClick={() => onConfirm()}>Add to Cart</button>
+    </div>
+  );
 }
 
-// Register the card component
-<PillarProvider
-  productKey="..."
-  cards={{
-    show_product: ({ data, onComplete }) => (
-      <ProductCard product={data} onSelect={() => onComplete({ success: true })} />
-    ),
-  }}
->
+usePillarTool({
+  name: 'show_product',
+  type: 'inline_ui',
+  execute: async ({ productId }) => ({ product: await getProduct(productId) }),
+  render: ProductCard,
+});
 ```
+
+> **Note:** The `cards` prop on `PillarProvider` is deprecated. Use the `render` prop on tool definitions instead for better co-location and type safety.
 
 ## Environment Variables
 

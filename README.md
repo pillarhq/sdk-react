@@ -46,7 +46,7 @@ Sign up at [app.trypillar.com](https://app.trypillar.com) and grab your product 
 Wrap your app with `PillarProvider`:
 
 ```tsx
-import { PillarProvider } from '@pillar-ai/react';
+import { PillarProvider } from "@pillar-ai/react";
 
 function App() {
   return (
@@ -61,30 +61,26 @@ For Next.js App Router, create a client wrapper:
 
 ```tsx
 // providers/PillarSDKProvider.tsx
-'use client';
+"use client";
 
-import { PillarProvider } from '@pillar-ai/react';
+import { PillarProvider } from "@pillar-ai/react";
 
 export function PillarSDKProvider({ children }: { children: React.ReactNode }) {
   return (
-    <PillarProvider productKey="your-product-key">
-      {children}
-    </PillarProvider>
+    <PillarProvider productKey="your-product-key">{children}</PillarProvider>
   );
 }
 ```
 
 ```tsx
 // app/layout.tsx
-import { PillarSDKProvider } from '@/providers/PillarSDKProvider';
+import { PillarSDKProvider } from "@/providers/PillarSDKProvider";
 
 export default function RootLayout({ children }) {
   return (
     <html>
       <body>
-        <PillarSDKProvider>
-          {children}
-        </PillarSDKProvider>
+        <PillarSDKProvider>{children}</PillarSDKProvider>
       </body>
     </html>
   );
@@ -96,19 +92,19 @@ export default function RootLayout({ children }) {
 Tools tell Pillar what your app can do. Define them with the `usePillarTool` hook:
 
 ```tsx
-import { usePillarTool } from '@pillar-ai/react';
-import { useRouter } from 'next/navigation';
+import { usePillarTool } from "@pillar-ai/react";
+import { useRouter } from "next/navigation";
 
 export function usePillarTools() {
   const router = useRouter();
 
   usePillarTool({
-    name: 'open_settings',
-    type: 'navigate',
-    description: 'Navigate to the settings page',
-    examples: ['open settings', 'go to settings'],
+    name: "open_settings",
+    type: "navigate",
+    description: "Navigate to the settings page",
+    examples: ["open settings", "go to settings"],
     autoRun: true,
-    execute: () => router.push('/settings'),
+    execute: () => router.push("/settings"),
   });
 }
 ```
@@ -123,11 +119,11 @@ Tools are the building blocks. When a user makes a request, Pillar matches inten
 
 ```tsx
 usePillarTool({
-  name: 'open_dashboard',
-  type: 'navigate',
-  description: 'Navigate to the main dashboard',
-  examples: ['go to dashboard', 'show me the dashboard'],
-  execute: () => router.push('/dashboard'),
+  name: "open_dashboard",
+  type: "navigate",
+  description: "Navigate to the main dashboard",
+  examples: ["go to dashboard", "show me the dashboard"],
+  execute: () => router.push("/dashboard"),
 });
 ```
 
@@ -137,15 +133,15 @@ Pillar extracts parameters from the user's request:
 
 ```tsx
 usePillarTool({
-  name: 'view_user_profile',
-  type: 'navigate',
+  name: "view_user_profile",
+  type: "navigate",
   description: "View a specific user's profile page",
   inputSchema: {
-    type: 'object',
+    type: "object",
     properties: {
-      userId: { type: 'string', description: 'The user ID to view' },
+      userId: { type: "string", description: "The user ID to view" },
     },
-    required: ['userId'],
+    required: ["userId"],
   },
   execute: ({ userId }) => router.push(`/users/${userId}`),
 });
@@ -156,31 +152,31 @@ usePillarTool({
 ```tsx
 usePillarTool([
   {
-    name: 'open_billing',
-    type: 'navigate',
-    description: 'Navigate to billing and subscription settings',
-    examples: ['go to billing', 'view my subscription'],
-    execute: () => router.push('/settings/billing'),
+    name: "open_billing",
+    type: "navigate",
+    description: "Navigate to billing and subscription settings",
+    examples: ["go to billing", "view my subscription"],
+    execute: () => router.push("/settings/billing"),
   },
   {
-    name: 'open_team',
-    type: 'navigate',
-    description: 'Navigate to team management page',
-    examples: ['manage team', 'invite team members'],
-    execute: () => router.push('/settings/team'),
+    name: "open_team",
+    type: "navigate",
+    description: "Navigate to team management page",
+    examples: ["manage team", "invite team members"],
+    execute: () => router.push("/settings/team"),
   },
 ]);
 ```
 
 ### Tool types
 
-| Type | Use case |
-|------|----------|
-| `navigate` | Navigate to a page or view |
-| `trigger_tool` | Run a function (export, toggle, API call) |
-| `query` | Return data to the assistant |
-| `external_link` | Open an external URL |
-| `copy_text` | Copy text to clipboard |
+| Type            | Use case                                  |
+| --------------- | ----------------------------------------- |
+| `navigate`      | Navigate to a page or view                |
+| `trigger_tool`  | Run a function (export, toggle, API call) |
+| `query`         | Return data to the assistant              |
+| `external_link` | Open an external URL                      |
+| `copy_text`     | Copy text to clipboard                    |
 
 See [Setting Up Tools](https://trypillar.com/docs/guides/tools) for the full guide.
 
@@ -191,19 +187,19 @@ See [Setting Up Tools](https://trypillar.com/docs/guides/tools) for the full gui
 Access SDK state and methods:
 
 ```tsx
-import { usePillar } from '@pillar-ai/react';
+import { usePillar } from "@pillar-ai/react";
 
 function MyComponent() {
   const {
-    pillar,      // SDK instance
-    isReady,     // Whether SDK is initialized
+    pillar, // SDK instance
+    isReady, // Whether SDK is initialized
     isPanelOpen, // Panel open state
-    open,        // Open the panel
-    close,       // Close the panel
-    toggle,      // Toggle the panel
-    navigate,    // Navigate to a view
-    setTheme,    // Update theme at runtime
-    on,          // Subscribe to events
+    open, // Open the panel
+    close, // Close the panel
+    toggle, // Toggle the panel
+    navigate, // Navigate to a view
+    setTheme, // Update theme at runtime
+    on, // Subscribe to events
   } = usePillar();
 
   if (!isReady) return <div>Loading...</div>;
@@ -217,29 +213,38 @@ function MyComponent() {
 Panel-specific controls:
 
 ```tsx
-import { useHelpPanel } from '@pillar-ai/react';
+import { useHelpPanel } from "@pillar-ai/react";
 
 function HelpButton() {
-  const { isOpen, open, close, toggle, openArticle, openCategory, openSearch, openChat } = useHelpPanel();
+  const {
+    isOpen,
+    open,
+    close,
+    toggle,
+    openArticle,
+    openCategory,
+    openSearch,
+    openChat,
+  } = useHelpPanel();
 
   return (
     <div>
-      <button onClick={toggle}>{isOpen ? 'Close' : 'Help'}</button>
+      <button onClick={toggle}>{isOpen ? "Close" : "Help"}</button>
       <button onClick={openChat}>Ask co-pilot</button>
     </div>
   );
 }
 ```
 
-| Method | Description |
-|--------|-------------|
-| `open(options?)` | Open the panel |
-| `close()` | Close the panel |
-| `toggle()` | Toggle open/closed |
-| `openArticle(slug)` | Open a specific article |
-| `openCategory(slug)` | Open a category view |
+| Method               | Description                     |
+| -------------------- | ------------------------------- |
+| `open(options?)`     | Open the panel                  |
+| `close()`            | Close the panel                 |
+| `toggle()`           | Toggle open/closed              |
+| `openArticle(slug)`  | Open a specific article         |
+| `openCategory(slug)` | Open a category view            |
 | `openSearch(query?)` | Open search with optional query |
-| `openChat()` | Open the co-pilot chat view |
+| `openChat()`         | Open the co-pilot chat view     |
 
 ## Components
 
@@ -247,19 +252,18 @@ function HelpButton() {
 
 The root component. Initializes and configures the SDK.
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `productKey` | `string` | Yes | Your product key from app.trypillar.com |
-| `config` | `object` | No | SDK configuration (panel, theme, triggers) |
-| `onTask` | `(task) => void` | No | Generic handler for dynamic tools |
-| `cards` | `object` | No | Custom card components for inline tool UI |
+| Prop         | Type             | Required | Description                                |
+| ------------ | ---------------- | -------- | ------------------------------------------ |
+| `productKey` | `string`         | Yes      | Your product key from app.trypillar.com    |
+| `config`     | `object`         | No       | SDK configuration (panel, theme, triggers) |
+| `onTask`     | `(task) => void` | No       | Generic handler for dynamic tools          |
 
 ```tsx
 <PillarProvider
   productKey="your-product-key"
   config={{
-    panel: { position: 'right', mode: 'push', width: 400 },
-    theme: { mode: 'auto', colors: { primary: '#2563eb' } },
+    panel: { position: "right", mode: "push", width: 400 },
+    theme: { mode: "auto", colors: { primary: "#2563eb" } },
   }}
 >
   {children}
@@ -271,13 +275,13 @@ The root component. Initializes and configures the SDK.
 For custom panel placement, set `panel.container` to `'manual'` and render `PillarPanel` where you want it:
 
 ```tsx
-import { PillarProvider, PillarPanel } from '@pillar-ai/react';
+import { PillarProvider, PillarPanel } from "@pillar-ai/react";
 
 function App() {
   return (
     <PillarProvider
       productKey="your-product-key"
-      config={{ panel: { container: 'manual' } }}
+      config={{ panel: { container: "manual" } }}
     >
       <div className="layout">
         <main>Your content</main>
@@ -296,16 +300,16 @@ For dynamic or backend-triggered tools, use the `onTask` prop on `PillarProvider
 <PillarProvider
   productKey="your-product-key"
   onTask={(task) => {
-    if (task.name.startsWith('nav_')) {
+    if (task.name.startsWith("nav_")) {
       router.push(task.data.path);
       return;
     }
 
     switch (task.name) {
-      case 'notification':
+      case "notification":
         showNotification(task.data.message);
         break;
-      case 'refresh_data':
+      case "refresh_data":
         queryClient.invalidateQueries();
         break;
     }
@@ -315,44 +319,78 @@ For dynamic or backend-triggered tools, use the `onTask` prop on `PillarProvider
 </PillarProvider>
 ```
 
-## Custom cards
+## Inline UI with render
 
-Render custom UI for inline tools:
+For `inline_ui` tools, use the `render` prop to display custom React components in the chat:
 
 ```tsx
-import { PillarProvider } from '@pillar-ai/react';
-import type { CardComponentProps } from '@pillar-ai/react';
-import { InviteMembersCard } from './cards/InviteMembersCard';
+import { usePillarTool, type ToolRenderProps } from "@pillar-ai/react";
 
-<PillarProvider
-  productKey="your-product-key"
-  cards={{
-    invite_members: InviteMembersCard,
-  }}
->
-  {children}
-</PillarProvider>
+usePillarTool({
+  name: "invite_members",
+  description: "Invite team members via email",
+  type: "inline_ui",
+  inputSchema: {
+    type: "object",
+    properties: {
+      emails: { type: "array", items: { type: "string" } },
+    },
+  },
+  execute: async ({ emails }) => ({ emails, teamName: "Acme Inc" }),
+  render: ({ data, onConfirm, onCancel }) => (
+    <div className="p-4 border rounded">
+      <p>Invite {data.emails?.length || 0} members to {data.teamName}?</p>
+      <button onClick={() => onConfirm()}>Send Invites</button>
+      <button onClick={() => onCancel()}>Cancel</button>
+    </div>
+  ),
+});
 ```
 
-See [Custom Cards](https://trypillar.com/docs/guides/custom-cards) for details.
+You can also pass a named component:
+
+```tsx
+function InviteCard({ data, onConfirm, onCancel }: ToolRenderProps<{ emails: string[] }>) {
+  return (
+    <div className="p-4 border rounded">
+      <p>Invite {data.emails.length} members?</p>
+      <button onClick={() => onConfirm()}>Confirm</button>
+      <button onClick={() => onCancel()}>Cancel</button>
+    </div>
+  );
+}
+
+usePillarTool({
+  name: "invite_members",
+  type: "inline_ui",
+  execute: async ({ emails }) => ({ emails }),
+  render: InviteCard,
+});
+```
+
+The render component receives:
+- `data` — return value from `execute`
+- `onConfirm(modifiedData?)` — call when user confirms
+- `onCancel()` — call when user cancels
+- `onStateChange?(state, message?)` — optional loading/success/error states
 
 ## Exports
 
-| Export | Description |
-|--------|-------------|
+| Export           | Description                               |
+| ---------------- | ----------------------------------------- |
 | `PillarProvider` | Context provider that initializes the SDK |
-| `PillarPanel` | Component for custom panel placement |
-| `usePillar` | Hook for SDK access and panel control |
-| `useHelpPanel` | Hook for panel-specific controls |
-| `usePillarTool` | Hook to register tools |
+| `PillarPanel`    | Component for custom panel placement      |
+| `usePillar`      | Hook for SDK access and panel control     |
+| `useHelpPanel`   | Hook for panel-specific controls          |
+| `usePillarTool`  | Hook to register tools                    |
 
 ## Related packages
 
-| Package | Description |
-|---------|-------------|
-| [@pillar-ai/sdk](https://github.com/pillarhq/sdk) | Core vanilla JS SDK |
-| [@pillar-ai/vue](https://github.com/pillarhq/sdk-vue) | Vue 3 bindings |
-| [@pillar-ai/svelte](https://github.com/pillarhq/sdk-svelte) | Svelte bindings |
+| Package                                                     | Description         |
+| ----------------------------------------------------------- | ------------------- |
+| [@pillar-ai/sdk](https://github.com/pillarhq/sdk)           | Core vanilla JS SDK |
+| [@pillar-ai/vue](https://github.com/pillarhq/sdk-vue)       | Vue 3 bindings      |
+| [@pillar-ai/svelte](https://github.com/pillarhq/sdk-svelte) | Svelte bindings     |
 
 ## Requirements
 
