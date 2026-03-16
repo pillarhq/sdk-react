@@ -179,15 +179,26 @@ export interface PillarProviderProps {
    * Custom card components to render for inline_ui type actions.
    * Map card type names to React components that will render the inline UI.
    *
-   * @example
-   * ```tsx
-   * import { InviteMembersCard } from './cards/InviteMembersCard';
+   * @deprecated Use the `render` prop on `usePillarTool` instead to co-locate
+   * the card renderer with the tool definition. This prop will be removed in v2.0.
    *
+   * @example New pattern (recommended):
+   * ```tsx
+   * usePillarTool({
+   *   name: 'invite_members',
+   *   description: 'Invite team members',
+   *   type: 'inline_ui',
+   *   execute: async (input) => ({ emails: input.emails }),
+   *   render: ({ data, onConfirm }) => <InviteMembersCard data={data} onConfirm={onConfirm} />,
+   * });
+   * ```
+   *
+   * @example Legacy pattern (deprecated):
+   * ```tsx
    * <PillarProvider
    *   productKey="my-product-key"
    *   cards={{
    *     invite_members: InviteMembersCard,
-   *     confirm_delete: ConfirmDeleteCard,
    *   }}
    * >
    * ```

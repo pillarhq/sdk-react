@@ -30,6 +30,29 @@
  * }
  * ```
  *
+ * @example Tool with inline render
+ * ```tsx
+ * import { usePillarTool } from '@pillar-ai/react';
+ *
+ * function ShoeStore() {
+ *   usePillarTool({
+ *     name: 'search_shoes',
+ *     description: 'Search for shoes',
+ *     type: 'inline_ui',
+ *     execute: async ({ query }) => ({ shoes: await searchShoes(query) }),
+ *     render: ({ data, onConfirm }) => (
+ *       <div className="grid grid-cols-2 gap-2">
+ *         {data.shoes.map(shoe => (
+ *           <div key={shoe.id} onClick={onConfirm}>{shoe.name}</div>
+ *         ))}
+ *       </div>
+ *     ),
+ *   });
+ *
+ *   return <div>Shoe Store</div>;
+ * }
+ * ```
+ *
  * @example Multiple tools
  * ```tsx
  * import { usePillarTool } from '@pillar-ai/react';
@@ -61,9 +84,51 @@
  * ```
  */
 
-import type { ToolSchema } from "@pillar-ai/sdk";
-import { useEffect, useMemo, useRef } from "react";
+import type { ToolSchema, CardCallbacks } from "@pillar-ai/sdk";
+import React, { useEffect, useMemo, useRef, type ComponentType } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { usePillarContext } from "../PillarProvider";
+
+/**
+ * Props passed to tool render components.
+ */
+export interface ToolRenderProps<T = Record<string, unknown>> {
+  /** Data returned by the tool's execute function */
+  data: T;
+  /** Call when user confirms/completes the action */
+  onConfirm: (modifiedData?: Record<string, unknown>) => void;
+  /** Call when user cancels the action */
+  onCancel: () => void;
+  /** Report state changes (loading, success, error) */
+  onStateChange?: (
+    state: "loading" | "success" | "error",
+    message?: string
+  ) => void;
+}
+
+/**
+ * Extended tool schema that accepts a React component for render.
+ * The component receives ToolRenderProps and renders the card UI.
+ */
+export interface ReactToolSchema<TInput = Record<string, unknown>>
+  extends Omit<ToolSchema<TInput>, "render"> {
+  /**
+   * React component to render the tool's result inline in chat.
+   *
+   * When provided, the SDK automatically registers this as a card renderer
+   * using the tool name as the card type. The card is rendered when the
+   * tool's execute function returns data.
+   *
+   * @example
+   * ```tsx
+   * render: ({ data, onConfirm }) => (
+   *   <div onClick={onConfirm}>{data.result}</div>
+   * )
+   * ```
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  render?: ComponentType<ToolRenderProps<any>>;
+}
 
 /**
  * Register one or more Pillar tools with co-located metadata and handlers.
@@ -73,11 +138,14 @@ import { usePillarContext } from "../PillarProvider";
  * the latest React state and props via refs, so you don't need to worry
  * about stale closures.
  *
+ * If a tool has a `render` prop, the SDK automatically registers it as
+ * a card renderer using the tool name as the card type.
+ *
  * @param schemaOrSchemas - Single tool schema or array of tool schemas
  */
 export function usePillarTool(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  schemaOrSchemas: ToolSchema<any> | ToolSchema<any>[]
+  schemaOrSchemas: ReactToolSchema<any> | ReactToolSchema<any>[]
 ): void {
   const { pillar } = usePillarContext();
 
@@ -101,19 +169,59 @@ export function usePillarTool(
   useEffect(() => {
     if (!pillar) return;
 
-    // Register all tools and collect unsubscribe functions
-    const unsubscribes = schemasRef.current.map((schema, index) => {
-      return pillar.defineTool({
+    const unsubscribes: Array<() => void> = [];
+    const cardRoots: Map<HTMLElement, Root> = new Map();
+
+    schemasRef.current.forEach((schema, index) => {
+      // Register the tool
+      const unsubTool = pillar.defineTool({
         ...schema,
         // Wrap execute to always use the latest ref version
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         execute: (input: any) => schemasRef.current[index].execute(input),
       } as ToolSchema);
+
+      unsubscribes.push(unsubTool);
+
+      // If there's a render component, register it as a card renderer
+      if (schema.render) {
+        const RenderComponent = schema.render;
+        const cardType = schema.name;
+
+        const unsubCard = pillar.registerCard(
+          cardType,
+          (container, data, callbacks: CardCallbacks) => {
+            const root = createRoot(container);
+            cardRoots.set(container, root);
+
+            root.render(
+              React.createElement(RenderComponent, {
+                data,
+                onConfirm: callbacks.onConfirm,
+                onCancel: callbacks.onCancel,
+                onStateChange: callbacks.onStateChange,
+              })
+            );
+
+            return () => {
+              const existingRoot = cardRoots.get(container);
+              if (existingRoot) {
+                existingRoot.unmount();
+                cardRoots.delete(container);
+              }
+            };
+          }
+        );
+
+        unsubscribes.push(unsubCard);
+      }
     });
 
-    // Cleanup: unregister all tools
+    // Cleanup: unregister all tools and cards
     return () => {
       unsubscribes.forEach((unsub) => unsub());
+      cardRoots.forEach((root) => root.unmount());
+      cardRoots.clear();
     };
   }, [pillar, toolNamesKey]);
 }

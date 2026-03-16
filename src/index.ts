@@ -58,7 +58,21 @@ export { PillarPanel, type PillarPanelProps } from './PillarPanel';
 // Hooks
 export { useHelpPanel, type UseHelpPanelResult } from './hooks/useHelpPanel';
 export { usePillar, type UsePillarResult, type TypedUsePillarResult } from './hooks/usePillar';
-export { usePillarTool, usePillarAction } from './hooks/usePillarTool';
+export {
+    usePillarTool,
+    usePillarAction,
+    type ToolRenderProps,
+    type ReactToolSchema,
+} from './hooks/usePillarTool';
+export {
+    usePillarTools,
+    type ToolResultCardProps,
+    type ToolWithCard,
+    type ToolDefinition,
+} from './hooks/usePillarTools';
+
+// Utilities
+export { defineTool } from './utils/defineTool';
 
 // Re-export types from core SDK for convenience
 export type {
