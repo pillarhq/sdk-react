@@ -188,7 +188,6 @@ export interface PillarProviderProps {
    *   name: 'invite_members',
    *   description: 'Invite team members',
    *   type: 'inline_ui',
-   *   execute: async (input) => ({ emails: input.emails }),
    *   render: ({ data, onConfirm }) => <InviteMembersCard data={data} onConfirm={onConfirm} />,
    * });
    * ```

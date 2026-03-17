@@ -4,7 +4,11 @@
  * Register one or more tools with co-located metadata and handlers.
  * Tools are registered on mount and unregistered on unmount.
  *
- * @example Single tool
+ * - For `type: 'inline_ui'` tools: provide `render` (a React component).
+ *   The AI agent supplies data directly to the component — no `execute` needed.
+ * - For all other tool types: provide `execute`. No `render` prop.
+ *
+ * @example Single executable tool
  * ```tsx
  * import { usePillarTool } from '@pillar-ai/react';
  *
@@ -30,7 +34,7 @@
  * }
  * ```
  *
- * @example Tool with inline render
+ * @example Inline UI tool with render component
  * ```tsx
  * import { usePillarTool } from '@pillar-ai/react';
  *
@@ -39,7 +43,6 @@
  *     name: 'search_shoes',
  *     description: 'Search for shoes',
  *     type: 'inline_ui',
- *     execute: async ({ query }) => ({ shoes: await searchShoes(query) }),
  *     render: ({ data, onConfirm }) => (
  *       <div className="grid grid-cols-2 gap-2">
  *         {data.shoes.map(shoe => (
@@ -84,7 +87,12 @@
  * ```
  */
 
-import type { ToolSchema, CardCallbacks } from "@pillar-ai/sdk";
+import type {
+  ToolSchema,
+  InlineUIToolSchema,
+  ExecutableToolSchema,
+  CardCallbacks,
+} from "@pillar-ai/sdk";
 import React, { useEffect, useMemo, useRef, type ComponentType } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { usePillarContext } from "../PillarProvider";
@@ -93,7 +101,7 @@ import { usePillarContext } from "../PillarProvider";
  * Props passed to tool render components.
  */
 export interface ToolRenderProps<T = Record<string, unknown>> {
-  /** Data returned by the tool's execute function */
+  /** Data provided by the AI agent */
   data: T;
   /** Call when user confirms/completes the action */
   onConfirm: (modifiedData?: Record<string, unknown>) => void;
@@ -107,28 +115,32 @@ export interface ToolRenderProps<T = Record<string, unknown>> {
 }
 
 /**
- * Extended tool schema that accepts a React component for render.
- * The component receives ToolRenderProps and renders the card UI.
+ * React inline_ui tool schema. Requires `render`, forbids `execute`.
+ *
+ * The AI agent provides data directly to the React component.
  */
-export interface ReactToolSchema<TInput = Record<string, unknown>>
-  extends Omit<ToolSchema<TInput>, "render"> {
-  /**
-   * React component to render the tool's result inline in chat.
-   *
-   * When provided, the SDK automatically registers this as a card renderer
-   * using the tool name as the card type. The card is rendered when the
-   * tool's execute function returns data.
-   *
-   * @example
-   * ```tsx
-   * render: ({ data, onConfirm }) => (
-   *   <div onClick={onConfirm}>{data.result}</div>
-   * )
-   * ```
-   */
+export interface ReactInlineUIToolSchema<TInput = Record<string, unknown>>
+  extends Omit<InlineUIToolSchema<TInput>, "render"> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  render?: ComponentType<ToolRenderProps<any>>;
+  render: ComponentType<ToolRenderProps<any>>;
 }
+
+/**
+ * React executable tool schema. Requires `execute`, forbids `render`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface ReactExecutableToolSchema<TInput = Record<string, unknown>>
+  extends ExecutableToolSchema<TInput> {}
+
+/**
+ * Tool schema for `usePillarTool`. Discriminated on `type`:
+ *
+ * - `type: 'inline_ui'` → `render` required, `execute` forbidden
+ * - all other types → `execute` required, `render` forbidden
+ */
+export type ReactToolSchema<TInput = Record<string, unknown>> =
+  | ReactInlineUIToolSchema<TInput>
+  | ReactExecutableToolSchema<TInput>;
 
 /**
  * Register one or more Pillar tools with co-located metadata and handlers.
@@ -138,8 +150,8 @@ export interface ReactToolSchema<TInput = Record<string, unknown>>
  * the latest React state and props via refs, so you don't need to worry
  * about stale closures.
  *
- * If a tool has a `render` prop, the SDK automatically registers it as
- * a card renderer using the tool name as the card type.
+ * - `inline_ui` tools register a card renderer from the `render` prop.
+ * - All other tools register the `execute` handler.
  *
  * @param schemaOrSchemas - Single tool schema or array of tool schemas
  */
@@ -173,20 +185,15 @@ export function usePillarTool(
     const cardRoots: Map<HTMLElement, Root> = new Map();
 
     schemasRef.current.forEach((schema, index) => {
-      // Register the tool
-      const unsubTool = pillar.defineTool({
-        ...schema,
-        // Wrap execute to always use the latest ref version
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        execute: (input: any) => schemasRef.current[index].execute(input),
-      } as ToolSchema);
-
-      unsubscribes.push(unsubTool);
-
-      // If there's a render component, register it as a card renderer
-      if (schema.render) {
+      if (schema.type === "inline_ui") {
+        // inline_ui: register card renderer, no execute
         const RenderComponent = schema.render;
         const cardType = schema.name;
+
+        // Register the tool definition (without execute) so the SDK knows about it
+        const { render: _render, ...sdkSchema } = schema;
+        const unsubTool = pillar.defineTool(sdkSchema as ToolSchema);
+        unsubscribes.push(unsubTool);
 
         const unsubCard = pillar.registerCard(
           cardType,
@@ -194,8 +201,18 @@ export function usePillarTool(
             const root = createRoot(container);
             cardRoots.set(container, root);
 
+            const CurrentRender =
+              schemasRef.current[index].type === "inline_ui"
+                ? (
+                    schemasRef.current[index] as ReactInlineUIToolSchema<
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      any
+                    >
+                  ).render
+                : RenderComponent;
+
             root.render(
-              React.createElement(RenderComponent, {
+              React.createElement(CurrentRender, {
                 data,
                 onConfirm: callbacks.onConfirm,
                 onCancel: callbacks.onCancel,
@@ -214,6 +231,22 @@ export function usePillarTool(
         );
 
         unsubscribes.push(unsubCard);
+      } else {
+        // Executable tool: register execute handler, no render
+        const unsubTool = pillar.defineTool({
+          ...schema,
+          // Wrap execute to always use the latest ref version
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          execute: (input: any) =>
+            (
+              schemasRef.current[index] as ReactExecutableToolSchema<
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                any
+              >
+            ).execute(input),
+        } as ToolSchema);
+
+        unsubscribes.push(unsubTool);
       }
     });
 

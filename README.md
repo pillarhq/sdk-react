@@ -321,10 +321,20 @@ For dynamic or backend-triggered tools, use the `onTask` prop on `PillarProvider
 
 ## Inline UI with render
 
-For `inline_ui` tools, use the `render` prop to display custom React components in the chat:
+For `inline_ui` tools, use the `render` prop to display custom React components in the chat. The AI agent provides data directly to the render component — no `execute` function needed:
 
 ```tsx
 import { usePillarTool, type ToolRenderProps } from "@pillar-ai/react";
+
+function InviteCard({ data, onConfirm, onCancel }: ToolRenderProps<{ emails: string[]; teamName: string }>) {
+  return (
+    <div className="p-4 border rounded">
+      <p>Invite {data.emails?.length || 0} members to {data.teamName}?</p>
+      <button onClick={() => onConfirm()}>Send Invites</button>
+      <button onClick={() => onCancel()}>Cancel</button>
+    </div>
+  );
+}
 
 usePillarTool({
   name: "invite_members",
@@ -334,42 +344,15 @@ usePillarTool({
     type: "object",
     properties: {
       emails: { type: "array", items: { type: "string" } },
+      teamName: { type: "string" },
     },
   },
-  execute: async ({ emails }) => ({ emails, teamName: "Acme Inc" }),
-  render: ({ data, onConfirm, onCancel }) => (
-    <div className="p-4 border rounded">
-      <p>Invite {data.emails?.length || 0} members to {data.teamName}?</p>
-      <button onClick={() => onConfirm()}>Send Invites</button>
-      <button onClick={() => onCancel()}>Cancel</button>
-    </div>
-  ),
-});
-```
-
-You can also pass a named component:
-
-```tsx
-function InviteCard({ data, onConfirm, onCancel }: ToolRenderProps<{ emails: string[] }>) {
-  return (
-    <div className="p-4 border rounded">
-      <p>Invite {data.emails.length} members?</p>
-      <button onClick={() => onConfirm()}>Confirm</button>
-      <button onClick={() => onCancel()}>Cancel</button>
-    </div>
-  );
-}
-
-usePillarTool({
-  name: "invite_members",
-  type: "inline_ui",
-  execute: async ({ emails }) => ({ emails }),
   render: InviteCard,
 });
 ```
 
 The render component receives:
-- `data` — return value from `execute`
+- `data` — Data provided by the AI agent (extracted from the conversation via `inputSchema`)
 - `onConfirm(modifiedData?)` — call when user confirms
 - `onCancel()` — call when user cancels
 - `onStateChange?(state, message?)` — optional loading/success/error states

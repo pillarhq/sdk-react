@@ -63,6 +63,8 @@ export {
     usePillarAction,
     type ToolRenderProps,
     type ReactToolSchema,
+    type ReactInlineUIToolSchema,
+    type ReactExecutableToolSchema,
 } from './hooks/usePillarTool';
 export {
     usePillarTools,
