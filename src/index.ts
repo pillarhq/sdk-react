@@ -62,10 +62,14 @@ export {
     usePillarTool,
     usePillarAction,
     type ToolRenderProps,
+    type ConfirmationRenderProps,
     type ReactToolSchema,
     type ReactInlineUIToolSchema,
     type ReactExecutableToolSchema,
 } from './hooks/usePillarTool';
+
+// Re-export ToolCardContext from core SDK for convenience
+export type { ToolCardContext } from '@pillar-ai/sdk';
 export {
     usePillarTools,
     type ToolResultCardProps,

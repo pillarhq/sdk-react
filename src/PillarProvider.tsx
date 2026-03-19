@@ -26,7 +26,7 @@ import React, {
   type ComponentType,
   type ReactNode,
 } from "react";
-import { createRoot, type Root } from "react-dom/client";
+import { createPortal } from "react-dom";
 
 // ============================================================================
 // Card Types
@@ -38,14 +38,6 @@ import { createRoot, type Root } from "react-dom/client";
 export interface CardComponentProps<T = Record<string, unknown>> {
   /** Data extracted by the AI for this action */
   data: T;
-  /**
-   * Called when user confirms the action.
-   * WARNING: Data passed here flows through the SDK pipeline (telemetry,
-   * agent context, logs). Never include secrets, tokens, or PII.
-   */
-  onConfirm: (modifiedData?: Record<string, unknown>) => void;
-  /** Called when user cancels the action */
-  onCancel: () => void;
   /** Called to report state changes (loading, success, error) */
   onStateChange?: (
     state: "loading" | "success" | "error",
@@ -188,7 +180,7 @@ export interface PillarProviderProps {
    *   name: 'invite_members',
    *   description: 'Invite team members',
    *   type: 'inline_ui',
-   *   render: ({ data, onConfirm }) => <InviteMembersCard data={data} onConfirm={onConfirm} />,
+   *   render: ({ data }) => <InviteMembersCard data={data} />,
    * });
    * ```
    *
@@ -225,6 +217,23 @@ export interface PillarProviderProps {
 const PillarContext = createContext<PillarContextValue | null>(null);
 
 // ============================================================================
+// Portal Registry (internal — not part of the public API)
+// ============================================================================
+
+interface PortalEntry {
+  container: HTMLElement;
+  element: ReactNode;
+}
+
+type RegisterPortalFn = (
+  id: string,
+  container: HTMLElement,
+  element: ReactNode
+) => () => void;
+
+const PortalRegistryContext = createContext<RegisterPortalFn | null>(null);
+
+// ============================================================================
 // Provider Component
 // ============================================================================
 
@@ -242,6 +251,30 @@ export function PillarProvider({
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   // DOM scanning is disabled - always false
   const isDOMScanningEnabled = false;
+
+  // Portal registry: card components rendered via createPortal to preserve
+  // the host app's React context (Redux, React Query, themes, etc.)
+  const [portals, setPortals] = useState<Map<string, PortalEntry>>(
+    () => new Map()
+  );
+
+  const registerPortal = useCallback<RegisterPortalFn>(
+    (id, container, element) => {
+      setPortals((prev) => {
+        const next = new Map(prev);
+        next.set(id, { container, element });
+        return next;
+      });
+      return () => {
+        setPortals((prev) => {
+          const next = new Map(prev);
+          next.delete(id);
+          return next;
+        });
+      };
+    },
+    []
+  );
 
   // Support both productKey (new) and helpCenter (deprecated)
   const resolvedKey = productKey ?? helpCenter;
@@ -360,40 +393,30 @@ export function PillarProvider({
 
   // DOM scanning is disabled - no sync needed
 
-  // Register custom card renderers
+  // Register custom card renderers (legacy `cards` prop — uses portals)
   useEffect(() => {
     if (!pillar || !cards) return;
 
     const unsubscribers: Array<() => void> = [];
-    const roots: Map<HTMLElement, Root> = new Map();
+    const portalCleanups: Array<() => void> = [];
+    let idCounter = 0;
 
     // Register each card component as a vanilla renderer
     Object.entries(cards).forEach(([cardType, Component]) => {
       const unsubscribe = pillar.registerCard(
         cardType,
         (container, data, callbacks: CardCallbacks) => {
-          // Create a React root for this container
-          const root = createRoot(container);
-          roots.set(container, root);
-
-          // Render the React component
-          root.render(
+          const portalId = `legacy-card-${cardType}-${idCounter++}`;
+          const cleanup = registerPortal(
+            portalId,
+            container,
             <Component
               data={data}
-              onConfirm={callbacks.onConfirm}
-              onCancel={callbacks.onCancel}
               onStateChange={callbacks.onStateChange}
             />
           );
-
-          // Return cleanup function
-          return () => {
-            const existingRoot = roots.get(container);
-            if (existingRoot) {
-              existingRoot.unmount();
-              roots.delete(container);
-            }
-          };
+          portalCleanups.push(cleanup);
+          return cleanup;
         }
       );
 
@@ -401,13 +424,10 @@ export function PillarProvider({
     });
 
     return () => {
-      // Cleanup all registrations
       unsubscribers.forEach((unsub) => unsub());
-      // Unmount all React roots
-      roots.forEach((root) => root.unmount());
-      roots.clear();
+      portalCleanups.forEach((cleanup) => cleanup());
     };
-  }, [pillar, cards]);
+  }, [pillar, cards, registerPortal]);
 
   // Actions
   const open = useCallback(
@@ -540,7 +560,14 @@ export function PillarProvider({
   );
 
   return (
-    <PillarContext.Provider value={value}>{children}</PillarContext.Provider>
+    <PillarContext.Provider value={value}>
+      <PortalRegistryContext.Provider value={registerPortal}>
+        {children}
+        {Array.from(portals.entries()).map(([id, { container, element }]) =>
+          createPortal(element, container, id)
+        )}
+      </PortalRegistryContext.Provider>
+    </PillarContext.Provider>
   );
 }
 
@@ -556,4 +583,20 @@ export function usePillarContext(): PillarContextValue {
   }
 
   return context;
+}
+
+/**
+ * Internal hook to access the portal registry.
+ * Card components rendered via portals inherit the full host-app React context.
+ */
+export function usePortalRegistry(): RegisterPortalFn {
+  const register = useContext(PortalRegistryContext);
+
+  if (!register) {
+    throw new Error(
+      "usePortalRegistry must be used within a PillarProvider"
+    );
+  }
+
+  return register;
 }

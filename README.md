@@ -326,12 +326,10 @@ For `inline_ui` tools, use the `render` prop to display custom React components 
 ```tsx
 import { usePillarTool, type ToolRenderProps } from "@pillar-ai/react";
 
-function InviteCard({ data, onConfirm, onCancel }: ToolRenderProps<{ emails: string[]; teamName: string }>) {
+function InviteCard({ data }: ToolRenderProps<{ emails: string[]; teamName: string }>) {
   return (
     <div className="p-4 border rounded">
-      <p>Invite {data.emails?.length || 0} members to {data.teamName}?</p>
-      <button onClick={() => onConfirm()}>Send Invites</button>
-      <button onClick={() => onCancel()}>Cancel</button>
+      <p>Invite {data.emails?.length || 0} members to {data.teamName}</p>
     </div>
   );
 }
@@ -353,8 +351,6 @@ usePillarTool({
 
 The render component receives:
 - `data` — Data provided by the AI agent (extracted from the conversation via `inputSchema`)
-- `onConfirm(modifiedData?)` — call when user confirms
-- `onCancel()` — call when user cancels
 - `onStateChange?(state, message?)` — optional loading/success/error states
 
 ## Exports

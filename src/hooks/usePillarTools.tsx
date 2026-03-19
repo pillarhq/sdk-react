@@ -62,9 +62,8 @@
  */
 
 import type { ToolSchema, CardCallbacks } from "@pillar-ai/sdk";
-import { useEffect, useMemo, useRef, type ComponentType } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { usePillarContext } from "../PillarProvider";
+import React, { useEffect, useMemo, useRef, type ComponentType } from "react";
+import { usePillarContext, usePortalRegistry } from "../PillarProvider";
 
 /**
  * Props passed to tool result card components.
@@ -120,6 +119,7 @@ function getToolSchema(def: ToolDefinition): ToolSchema {
  */
 export function usePillarTools(definitions: ToolDefinition[]): void {
   const { pillar } = usePillarContext();
+  const registerPortal = usePortalRegistry();
 
   // Keep refs to latest definitions so handlers capture current state/props
   const definitionsRef = useRef(definitions);
@@ -131,11 +131,16 @@ export function usePillarTools(definitions: ToolDefinition[]): void {
     [definitions]
   );
 
+  // Keep a stable ref to registerPortal so effect doesn't re-run when it changes
+  const registerPortalRef = useRef(registerPortal);
+  registerPortalRef.current = registerPortal;
+
   useEffect(() => {
     if (!pillar) return;
 
     const unsubscribes: Array<() => void> = [];
-    const cardRoots: Map<HTMLElement, Root> = new Map();
+    const portalCleanups: Array<() => void> = [];
+    let idCounter = 0;
 
     definitionsRef.current.forEach((def, index) => {
       const schema = getToolSchema(def);
@@ -148,7 +153,9 @@ export function usePillarTools(definitions: ToolDefinition[]): void {
         execute: (input: any) => {
           const currentDef = definitionsRef.current[index];
           const currentSchema = getToolSchema(currentDef);
-          return currentSchema.execute(input);
+          if (currentSchema.execute) {
+            return currentSchema.execute(input);
+          }
         },
       } as ToolSchema);
 
@@ -162,23 +169,17 @@ export function usePillarTools(definitions: ToolDefinition[]): void {
         const unsubCard = pillar.registerCard(
           cardType,
           (container, data, callbacks: CardCallbacks) => {
-            const root = createRoot(container);
-            cardRoots.set(container, root);
-
-            root.render(
+            const portalId = `tool-result-${schema.name}-${idCounter++}`;
+            const cleanup = registerPortalRef.current(
+              portalId,
+              container,
               <ResultCard
                 data={data}
-                onDismiss={callbacks.onCancel}
+                onDismiss={callbacks.onStateChange ? () => callbacks.onStateChange!('success') : undefined}
               />
             );
-
-            return () => {
-              const existingRoot = cardRoots.get(container);
-              if (existingRoot) {
-                existingRoot.unmount();
-                cardRoots.delete(container);
-              }
-            };
+            portalCleanups.push(cleanup);
+            return cleanup;
           }
         );
 
@@ -186,11 +187,10 @@ export function usePillarTools(definitions: ToolDefinition[]): void {
       }
     });
 
-    // Cleanup: unregister all tools and cards
+    // Cleanup: unregister all tools, cards, and portals
     return () => {
       unsubscribes.forEach(unsub => unsub());
-      cardRoots.forEach(root => root.unmount());
-      cardRoots.clear();
+      portalCleanups.forEach(cleanup => cleanup());
     };
   }, [pillar, toolNamesKey]);
 }

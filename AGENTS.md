@@ -593,11 +593,9 @@ function ProductTools() {
       },
       required: ['productId'],
     },
-    render: ({ data, onConfirm, onCancel }) => (
+    render: ({ data }) => (
       <ProductCard
         product={data.product}
-        onSelect={() => onConfirm()}
-        onDismiss={() => onCancel()}
       />
     ),
   });
@@ -608,19 +606,16 @@ function ProductTools() {
 
 The `render` component receives:
 - `data` — the data provided by the AI agent (matching `inputSchema`)
-- `onConfirm(modifiedData?)` — call when the user confirms/completes the action
-- `onCancel()` — call when the user cancels
 - `onStateChange?(state, message?)` — optional callback for loading/success/error states
 
 You can also pass a named component instead of an inline function:
 
 ```tsx
-function ProductCard({ data, onConfirm, onCancel }: ToolRenderProps<{ product: Product }>) {
+function ProductCard({ data }: ToolRenderProps<{ product: Product }>) {
   return (
     <div className="p-4 border rounded">
       <h3>{data.product.name}</h3>
       <p>${data.product.price}</p>
-      <button onClick={() => onConfirm()}>Add to Cart</button>
     </div>
   );
 }

@@ -43,16 +43,64 @@
  *     name: 'search_shoes',
  *     description: 'Search for shoes',
  *     type: 'inline_ui',
- *     render: ({ data, onConfirm }) => (
+ *     render: ({ data }) => (
  *       <div className="grid grid-cols-2 gap-2">
  *         {data.shoes.map(shoe => (
- *           <div key={shoe.id} onClick={onConfirm}>{shoe.name}</div>
+ *           <div key={shoe.id}>{shoe.name}</div>
  *         ))}
  *       </div>
  *     ),
  *   });
  *
  *   return <div>Shoe Store</div>;
+ * }
+ * ```
+ *
+ * @example Executable tool with confirmation step
+ * ```tsx
+ * import { usePillarTool } from '@pillar-ai/react';
+ *
+ * function DangerZone() {
+ *   usePillarTool({
+ *     name: 'delete_account',
+ *     description: 'Permanently delete the user account',
+ *     needsConfirmation: true,
+ *     execute: async () => {
+ *       await api.deleteAccount();
+ *       return { success: true };
+ *     },
+ *   });
+ *
+ *   return <div>Settings</div>;
+ * }
+ * ```
+ *
+ * @example Executable tool with custom confirmation UI
+ * ```tsx
+ * import { usePillarTool, type ConfirmationRenderProps } from '@pillar-ai/react';
+ *
+ * function ConfirmDelete({ data, onConfirm, onCancel }: ConfirmationRenderProps) {
+ *   return (
+ *     <div>
+ *       <p>Are you sure you want to delete {data.name}?</p>
+ *       <button onClick={() => onConfirm()}>Yes, delete</button>
+ *       <button onClick={onCancel}>Cancel</button>
+ *     </div>
+ *   );
+ * }
+ *
+ * function DangerZone() {
+ *   usePillarTool({
+ *     name: 'delete_account',
+ *     description: 'Permanently delete the user account',
+ *     renderConfirmation: ConfirmDelete,
+ *     execute: async () => {
+ *       await api.deleteAccount();
+ *       return { success: true };
+ *     },
+ *   });
+ *
+ *   return <div>Settings</div>;
  * }
  * ```
  *
@@ -92,10 +140,10 @@ import type {
   InlineUIToolSchema,
   ExecutableToolSchema,
   CardCallbacks,
+  ToolCardContext,
 } from "@pillar-ai/sdk";
-import React, { useEffect, useMemo, useRef, type ComponentType } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { usePillarContext } from "../PillarProvider";
+import React, { useEffect, useMemo, useRef, useSyncExternalStore, type ComponentType } from "react";
+import { usePillarContext, usePortalRegistry } from "../PillarProvider";
 
 /**
  * Props passed to tool render components.
@@ -103,15 +151,42 @@ import { usePillarContext } from "../PillarProvider";
 export interface ToolRenderProps<T = Record<string, unknown>> {
   /** Data provided by the AI agent */
   data: T;
-  /** Call when user confirms/completes the action */
-  onConfirm: (modifiedData?: Record<string, unknown>) => void;
-  /** Call when user cancels the action */
-  onCancel: () => void;
+  /**
+   * Send a result back to the AI agent, continuing the conversation.
+   * The agent sees this as the tool's response and can reason about it
+   * (e.g., invoke another tool like a checkout flow).
+   *
+   * @example
+   * ```tsx
+   * function ShoeResults({ data, sendResult }: ToolRenderProps<ShoeSearchOutput>) {
+   *   const handleAddToCart = (shoes: Shoe[]) => {
+   *     cartStore.add(shoes);
+   *     sendResult({ addedToCart: shoes.map(s => s.name), cartTotal: 289 });
+   *   };
+   * }
+   * ```
+   */
+  sendResult: (result: Record<string, unknown>) => Promise<void>;
+  /** Context about this card's position in the chat. */
+  context: ToolCardContext;
   /** Report state changes (loading, success, error) */
   onStateChange?: (
     state: "loading" | "success" | "error",
     message?: string
   ) => void;
+}
+
+/**
+ * Props passed to custom confirmation render components.
+ * Only used with executable (non-inline_ui) tools that have `renderConfirmation`.
+ */
+export interface ConfirmationRenderProps<T = Record<string, unknown>> {
+  /** Data the AI provided when invoking the tool */
+  data: T;
+  /** Call to approve the action — triggers the tool's `execute` handler and sends the result to the AI */
+  onConfirm: (modifiedData?: Record<string, unknown>) => void;
+  /** Call to dismiss the confirmation — no execution, card collapses */
+  onCancel: () => void;
 }
 
 /**
@@ -127,10 +202,24 @@ export interface ReactInlineUIToolSchema<TInput = Record<string, unknown>>
 
 /**
  * React executable tool schema. Requires `execute`, forbids `render`.
+ *
+ * Optionally supports `needsConfirmation` and `renderConfirmation` to gate
+ * execution behind user approval.
  */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ReactExecutableToolSchema<TInput = Record<string, unknown>>
-  extends ExecutableToolSchema<TInput> {}
+  extends ExecutableToolSchema<TInput> {
+  /**
+   * When true, the SDK shows a confirmation UI before calling `execute`.
+   * Uses default Confirm / Cancel buttons unless `renderConfirmation` is provided.
+   */
+  needsConfirmation?: boolean;
+  /**
+   * Custom React component for the confirmation step.
+   * Receives `{ data, onConfirm, onCancel }`. Implies `needsConfirmation`.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  renderConfirmation?: ComponentType<ConfirmationRenderProps<any>>;
+}
 
 /**
  * Tool schema for `usePillarTool`. Discriminated on `type`:
@@ -141,6 +230,125 @@ export interface ReactExecutableToolSchema<TInput = Record<string, unknown>>
 export type ReactToolSchema<TInput = Record<string, unknown>> =
   | ReactInlineUIToolSchema<TInput>
   | ReactExecutableToolSchema<TInput>;
+
+/**
+ * Fallback UI displayed when an inline_ui tool's render component throws an error.
+ * Shows a generic user-facing message (technical details are sent to the LLM).
+ */
+function ErrorFallbackUI() {
+  return React.createElement(
+    "div",
+    {
+      style: {
+        padding: "12px 16px",
+        borderRadius: "8px",
+        backgroundColor: "#fef2f2",
+        border: "1px solid #fecaca",
+        color: "#991b1b",
+        fontSize: "14px",
+        fontFamily: "system-ui, -apple-system, sans-serif",
+      },
+    },
+    React.createElement(
+      "div",
+      { style: { fontWeight: 500 } },
+      "Something went wrong displaying this content"
+    )
+  );
+}
+
+/**
+ * Error boundary that catches render errors from inline_ui tool components.
+ * Displays a fallback UI and notifies the LLM about the error.
+ */
+interface InlineUIErrorBoundaryProps {
+  toolName: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  pillar: any;
+  children?: React.ReactNode;
+}
+
+class InlineUIErrorBoundary extends React.Component<
+  InlineUIErrorBoundaryProps,
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: InlineUIErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error) {
+    this.props.pillar.sendToolResultAsMessage(this.props.toolName, {
+      success: false,
+      error: `Component render error: ${error.message}`,
+      errorType: "render_error",
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return React.createElement(ErrorFallbackUI);
+    }
+    return this.props.children;
+  }
+}
+
+/**
+ * Wrapper component that reactively computes ToolCardContext.
+ * Re-renders when the message list changes so `isLatest` stays accurate.
+ */
+function ReactiveCardWrapper({
+  RenderComponent,
+  data,
+  sendResult,
+  onStateChange,
+  messageIndex,
+  segmentIndex,
+  toolName,
+  pillar,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  RenderComponent: ComponentType<ToolRenderProps<any>>;
+  data: Record<string, unknown>;
+  sendResult: (result: Record<string, unknown>) => Promise<void>;
+  onStateChange?: (state: "loading" | "success" | "error", message?: string) => void;
+  messageIndex: number;
+  segmentIndex: number;
+  toolName: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  pillar: any;
+}) {
+  const subscribe = React.useCallback(
+    (cb: () => void) => pillar.subscribeToMessages(cb),
+    [pillar]
+  );
+  const getSnapshot = React.useCallback(() => {
+    // Return a serialized snapshot of "is this position latest"
+    // useSyncExternalStore needs a stable value to compare
+    return pillar.isPositionLatest(messageIndex, segmentIndex) ? "true" : "false";
+  }, [pillar, messageIndex, segmentIndex]);
+
+  const isLatestStr = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const isLatest = isLatestStr === "true";
+
+  const context: ToolCardContext = {
+    isLatest,
+    messageIndex,
+    segmentIndex,
+    toolName,
+  };
+
+  return React.createElement(RenderComponent, {
+    data,
+    sendResult,
+    context,
+    onStateChange,
+  });
+}
 
 /**
  * Register one or more Pillar tools with co-located metadata and handlers.
@@ -160,6 +368,7 @@ export function usePillarTool(
   schemaOrSchemas: ReactToolSchema<any> | ReactToolSchema<any>[]
 ): void {
   const { pillar } = usePillarContext();
+  const registerPortal = usePortalRegistry();
 
   // Normalize to array for consistent handling
   const schemas = useMemo(
@@ -178,11 +387,16 @@ export function usePillarTool(
     [schemas]
   );
 
+  // Keep a stable ref to registerPortal so effect doesn't re-run when it changes
+  const registerPortalRef = useRef(registerPortal);
+  registerPortalRef.current = registerPortal;
+
   useEffect(() => {
     if (!pillar) return;
 
     const unsubscribes: Array<() => void> = [];
-    const cardRoots: Map<HTMLElement, Root> = new Map();
+    const portalCleanups: Array<() => void> = [];
+    let idCounter = 0;
 
     schemasRef.current.forEach((schema, index) => {
       if (schema.type === "inline_ui") {
@@ -197,10 +411,7 @@ export function usePillarTool(
 
         const unsubCard = pillar.registerCard(
           cardType,
-          (container, data, callbacks: CardCallbacks) => {
-            const root = createRoot(container);
-            cardRoots.set(container, root);
-
+          (container, data, callbacks: CardCallbacks, context) => {
             const CurrentRender =
               schemasRef.current[index].type === "inline_ui"
                 ? (
@@ -211,50 +422,157 @@ export function usePillarTool(
                   ).render
                 : RenderComponent;
 
-            root.render(
-              React.createElement(CurrentRender, {
-                data,
-                onConfirm: callbacks.onConfirm,
-                onCancel: callbacks.onCancel,
-                onStateChange: callbacks.onStateChange,
-              })
+            const portalId = `tool-${cardType}-${idCounter++}`;
+            const cleanup = registerPortalRef.current(
+              portalId,
+              container,
+              React.createElement(
+                InlineUIErrorBoundary,
+                { toolName: cardType, pillar },
+                React.createElement(ReactiveCardWrapper, {
+                  RenderComponent: CurrentRender,
+                  data,
+                  sendResult: (result: Record<string, unknown>) => {
+                    pillar.sendToolResultAsMessage(cardType, result);
+                    return Promise.resolve();
+                  },
+                  onStateChange: callbacks.onStateChange,
+                  messageIndex: context?.messageIndex ?? -1,
+                  segmentIndex: context?.segmentIndex ?? -1,
+                  toolName: cardType,
+                  pillar,
+                })
+              )
             );
+            portalCleanups.push(cleanup);
 
-            return () => {
-              const existingRoot = cardRoots.get(container);
-              if (existingRoot) {
-                existingRoot.unmount();
-                cardRoots.delete(container);
-              }
-            };
+            return cleanup;
           }
         );
 
         unsubscribes.push(unsubCard);
       } else {
-        // Executable tool: register execute handler, no render
-        const unsubTool = pillar.defineTool({
-          ...schema,
-          // Wrap execute to always use the latest ref version
+        const execSchema = schema as ReactExecutableToolSchema<
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          execute: (input: any) =>
-            (
-              schemasRef.current[index] as ReactExecutableToolSchema<
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                any
-              >
-            ).execute(input),
-        } as ToolSchema);
+          any
+        >;
+        const wantsConfirmation =
+          execSchema.needsConfirmation || !!execSchema.renderConfirmation;
 
-        unsubscribes.push(unsubTool);
+        if (wantsConfirmation) {
+          // Register the tool WITHOUT execute so the SDK doesn't auto-run it.
+          // We store execute locally and call it from the confirmation card.
+          const {
+            execute: _execute,
+            needsConfirmation: _nc,
+            renderConfirmation: _rc,
+            ...sdkSchema
+          } = execSchema;
+
+          // Mark as needsConfirmation so the core SDK knows to show a card
+          const unsubTool = pillar.defineTool({
+            ...sdkSchema,
+            needsConfirmation: true,
+          } as unknown as ToolSchema);
+          unsubscribes.push(unsubTool);
+
+          const ConfirmComponent = execSchema.renderConfirmation;
+
+          const unsubCard = pillar.registerCard(
+            schema.name,
+            (container, data, callbacks: CardCallbacks) => {
+              const handleConfirm = async (
+                modifiedData?: Record<string, unknown>
+              ) => {
+                const currentSchema = schemasRef.current[
+                  index
+                ] as ReactExecutableToolSchema<
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  any
+                >;
+                const executeData = modifiedData || data;
+
+                try {
+                  callbacks.onStateChange?.("loading");
+                  const result = await currentSchema.execute(executeData);
+                  if (result !== undefined) {
+                    await pillar.sendToolResult(schema.name, result);
+                  }
+                  callbacks.onStateChange?.("success");
+                } catch (err) {
+                  callbacks.onStateChange?.(
+                    "error",
+                    err instanceof Error ? err.message : String(err)
+                  );
+                  await pillar.sendToolResult(schema.name, {
+                    success: false,
+                    error:
+                      err instanceof Error ? err.message : String(err),
+                  });
+                }
+              };
+
+              const handleCancel = () => {
+                callbacks.onCancel?.();
+              };
+
+              if (ConfirmComponent) {
+                const CurrentConfirm =
+                  (
+                    schemasRef.current[
+                      index
+                    ] as ReactExecutableToolSchema<
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      any
+                    >
+                  ).renderConfirmation || ConfirmComponent;
+
+                const portalId = `confirm-${schema.name}-${idCounter++}`;
+                const cleanup = registerPortalRef.current(
+                  portalId,
+                  container,
+                  React.createElement(CurrentConfirm, {
+                    data,
+                    onConfirm: handleConfirm,
+                    onCancel: handleCancel,
+                  })
+                );
+                portalCleanups.push(cleanup);
+
+                return cleanup;
+              } else {
+                // Use the default card — wire confirm/cancel through callbacks
+                callbacks.onConfirm = handleConfirm;
+                callbacks.onCancel = handleCancel;
+              }
+            }
+          );
+
+          unsubscribes.push(unsubCard);
+        } else {
+          // Executable tool without confirmation: register execute handler directly
+          const unsubTool = pillar.defineTool({
+            ...schema,
+            // Wrap execute to always use the latest ref version
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            execute: (input: any) =>
+              (
+                schemasRef.current[index] as ReactExecutableToolSchema<
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  any
+                >
+              ).execute(input),
+          } as ToolSchema);
+
+          unsubscribes.push(unsubTool);
+        }
       }
     });
 
-    // Cleanup: unregister all tools and cards
+    // Cleanup: unregister all tools, cards, and portals
     return () => {
       unsubscribes.forEach((unsub) => unsub());
-      cardRoots.forEach((root) => root.unmount());
-      cardRoots.clear();
+      portalCleanups.forEach((cleanup) => cleanup());
     };
   }, [pillar, toolNamesKey]);
 }
