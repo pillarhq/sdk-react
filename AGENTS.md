@@ -279,6 +279,8 @@ Key properties of `defineTool()` and `usePillarTool()`:
 - All tools registered this way automatically return data to the agent
 - `autoRun` (default: false) — execute without user confirmation
 - `autoComplete` (default: true) — complete immediately after execution. Set to false for long-running tools where you want to call `pillar.completeTask(id, success)` manually
+- `needsConfirmation` (default: false) — show a Confirm/Cancel card before calling `execute`. Use for destructive actions
+- `renderConfirmation` — custom component for the confirmation step (implies `needsConfirmation`)
 - `outputSchema` — JSON Schema describing the tool's return value. Properties with `"sensitive": true` are stripped from AI context and delivered to the user via a secure reveal UI
 
 ## Tool Syncing
@@ -606,16 +608,21 @@ function ProductTools() {
 
 The `render` component receives:
 - `data` — the data provided by the AI agent (matching `inputSchema`)
+- `sendResult(result)` — send a result back to the AI agent, continuing the conversation
+- `context` — card position info (`isLatest`, `isReady`, `messageIndex`, `segmentIndex`, `toolName`)
 - `onStateChange?(state, message?)` — optional callback for loading/success/error states
 
 You can also pass a named component instead of an inline function:
 
 ```tsx
-function ProductCard({ data }: ToolRenderProps<{ product: Product }>) {
+function ProductCard({ data, sendResult }: ToolRenderProps<{ product: Product }>) {
   return (
     <div className="p-4 border rounded">
       <h3>{data.product.name}</h3>
       <p>${data.product.price}</p>
+      <button onClick={() => sendResult({ addedToCart: data.product.id })}>
+        Add to Cart
+      </button>
     </div>
   );
 }
@@ -628,6 +635,56 @@ usePillarTool({
 ```
 
 > **Note:** The `cards` prop on `PillarProvider` is deprecated. Use the `render` prop on tool definitions instead for better co-location and type safety.
+
+## Confirmation UI
+
+For executable tools that perform destructive or irreversible actions, use `needsConfirmation` to require user approval before `execute` runs. The agent can still call the tool, but the SDK shows a Confirm/Cancel card instead of executing immediately:
+
+```tsx
+usePillarTool({
+  name: 'delete_project',
+  description: 'Permanently delete a project and all its data',
+  type: 'trigger_tool',
+  needsConfirmation: true,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      projectId: { type: 'string', description: 'Project ID to delete' },
+    },
+    required: ['projectId'],
+  },
+  execute: async ({ projectId }) => {
+    await api.deleteProject(projectId);
+    return { deleted: true };
+  },
+});
+```
+
+For custom confirmation UI, use `renderConfirmation` (implies `needsConfirmation`):
+
+```tsx
+import { usePillarTool, type ConfirmationRenderProps } from '@pillar-ai/react';
+
+function ConfirmPurchase({ data, onConfirm, onCancel }: ConfirmationRenderProps) {
+  return (
+    <div className="p-4 border rounded">
+      <p>Complete purchase for ${data.total}?</p>
+      <button onClick={() => onConfirm()}>Buy Now</button>
+      <button onClick={onCancel}>Cancel</button>
+    </div>
+  );
+}
+
+usePillarTool({
+  name: 'complete_purchase',
+  description: 'Complete the purchase',
+  renderConfirmation: ConfirmPurchase,
+  execute: async ({ cartId }) => {
+    await api.checkout(cartId);
+    return { success: true };
+  },
+});
+```
 
 ## Environment Variables
 

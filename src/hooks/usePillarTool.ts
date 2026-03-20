@@ -412,15 +412,16 @@ export function usePillarTool(
 
     schemasRef.current.forEach((schema, index) => {
       if (schema.type === "inline_ui") {
-        // inline_ui: register card renderer, no execute
         const RenderComponent = schema.render;
         const cardType = schema.name;
+        if (!RenderComponent) {
+          console.warn(
+            `[Pillar] Tool "${cardType}" has type 'inline_ui' but no render component. Skipping registration.`
+          );
+          return;
+        }
 
-        // Register the tool definition (without execute) so the SDK knows about it
-        const { render: _render, ...sdkSchema } = schema;
-        const unsubTool = pillar.defineTool(sdkSchema as ToolSchema);
-        unsubscribes.push(unsubTool);
-
+        // Register card renderer first so defineTool sees it in _cardRenderers
         const unsubCard = pillar.registerCard(
           cardType,
           (container, data, callbacks: CardCallbacks, context) => {
@@ -461,8 +462,12 @@ export function usePillarTool(
             return cleanup;
           }
         );
-
         unsubscribes.push(unsubCard);
+
+        // Register tool definition (without render) so the SDK knows about it
+        const { render: _render, ...sdkSchema } = schema;
+        const unsubTool = pillar.defineTool(sdkSchema as ToolSchema);
+        unsubscribes.push(unsubTool);
       } else {
         const execSchema = schema as ReactExecutableToolSchema<
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -170,13 +170,14 @@ usePillarTool([
 
 ### Tool types
 
-| Type            | Use case                                  |
-| --------------- | ----------------------------------------- |
-| `navigate`      | Navigate to a page or view                |
-| `trigger_tool`  | Run a function (export, toggle, API call) |
-| `query`         | Return data to the assistant              |
-| `external_link` | Open an external URL                      |
-| `copy_text`     | Copy text to clipboard                    |
+| Type            | Use case                                      |
+| --------------- | --------------------------------------------- |
+| `navigate`      | Navigate to a page or view                    |
+| `trigger_tool`  | Run a function (export, toggle, API call)     |
+| `query`         | Return data to the assistant                  |
+| `inline_ui`     | Render a custom component in the chat         |
+| `external_link` | Open an external URL                          |
+| `copy_text`     | Copy text to clipboard                        |
 
 See [Setting Up Tools](https://trypillar.com/docs/guides/tools) for the full guide.
 
@@ -351,7 +352,63 @@ usePillarTool({
 
 The render component receives:
 - `data` — Data provided by the AI agent (extracted from the conversation via `inputSchema`)
+- `sendResult(result)` — Send a result back to the AI agent, continuing the conversation
+- `context` — Card position info (`isLatest`, `isReady`, `messageIndex`, `segmentIndex`, `toolName`)
 - `onStateChange?(state, message?)` — optional loading/success/error states
+
+## Confirmation UI
+
+For tools that perform destructive or irreversible actions, use `needsConfirmation` to require user approval before `execute` runs:
+
+```tsx
+usePillarTool({
+  name: "delete_project",
+  description: "Permanently delete a project and all its data",
+  type: "trigger_tool",
+  needsConfirmation: true,
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectId: { type: "string", description: "Project ID to delete" },
+    },
+    required: ["projectId"],
+  },
+  execute: async ({ projectId }) => {
+    await api.deleteProject(projectId);
+    return { deleted: true };
+  },
+});
+```
+
+The SDK shows a Confirm/Cancel card. The user must click **Confirm** before `execute` runs.
+
+For custom confirmation UI, use `renderConfirmation`:
+
+```tsx
+import { usePillarTool, type ConfirmationRenderProps } from "@pillar-ai/react";
+
+function ConfirmPurchase({ data, onConfirm, onCancel }: ConfirmationRenderProps) {
+  return (
+    <div className="p-4 border rounded">
+      <p>Complete purchase for ${data.total}?</p>
+      <button onClick={() => onConfirm()}>Buy Now</button>
+      <button onClick={onCancel}>Cancel</button>
+    </div>
+  );
+}
+
+usePillarTool({
+  name: "complete_purchase",
+  description: "Complete the purchase",
+  renderConfirmation: ConfirmPurchase,
+  execute: async ({ cartId }) => {
+    await api.checkout(cartId);
+    return { success: true };
+  },
+});
+```
+
+Providing `renderConfirmation` implies `needsConfirmation` — you don't need to set both.
 
 ## Exports
 
