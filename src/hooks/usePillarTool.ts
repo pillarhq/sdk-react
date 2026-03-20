@@ -335,8 +335,20 @@ function ReactiveCardWrapper({
   const isLatestStr = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
   const isLatest = isLatestStr === "true";
 
+  const subscribeLoading = React.useCallback(
+    (cb: () => void) => pillar.subscribeToLoadingState(cb),
+    [pillar]
+  );
+  const getLoadingSnapshot = React.useCallback(
+    () => (pillar.isChatLoading ? "loading" : "ready"),
+    [pillar]
+  );
+  const readyStr = useSyncExternalStore(subscribeLoading, getLoadingSnapshot, getLoadingSnapshot);
+  const isReady = readyStr === "ready";
+
   const context: ToolCardContext = {
     isLatest,
+    isReady,
     messageIndex,
     segmentIndex,
     toolName,
