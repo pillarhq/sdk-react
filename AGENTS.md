@@ -38,7 +38,7 @@ import { PillarProvider } from '@pillar-ai/react';
 
 function App() {
   return (
-    <PillarProvider productKey="your-product-key">
+    <PillarProvider agentSlug="your-agent-slug">
       <YourApp />
     </PillarProvider>
   );
@@ -57,7 +57,7 @@ import { PillarProvider } from '@pillar-ai/react';
 
 export function PillarSDKProvider({ children }: { children: React.ReactNode }) {
   return (
-    <PillarProvider productKey={process.env.NEXT_PUBLIC_PILLAR_PRODUCT_KEY!}>
+    <PillarProvider agentSlug={process.env.NEXT_PUBLIC_PILLAR_AGENT_SLUG!}>
       {children}
     </PillarProvider>
   );
@@ -89,7 +89,7 @@ All configuration is optional with sensible defaults:
 
 ```tsx
 <PillarProvider
-  productKey="your-product-key"
+  agentSlug="your-agent-slug"
   config={{
     edgeTrigger: {
       enabled: true,  // Show sidebar tab on screen edge
@@ -476,7 +476,7 @@ For custom panel placement (e.g., embedding the panel inside your layout instead
 import { PillarProvider, PillarPanel } from '@pillar-ai/react';
 
 <PillarProvider
-  productKey="your-product-key"
+  agentSlug="your-agent-slug"
   config={{ panel: { container: 'manual' } }}
 >
   <div className="my-layout">
@@ -690,7 +690,7 @@ usePillarTool({
 
 ```bash
 # .env.local
-NEXT_PUBLIC_PILLAR_PRODUCT_KEY=your-product-key
+NEXT_PUBLIC_PILLAR_AGENT_SLUG=your-agent-slug
 ```
 
 ## TypeScript Support
@@ -727,7 +727,7 @@ import { PillarProvider } from '@pillar-ai/react';
 
 export function PillarSDKProvider({ children }: { children: React.ReactNode }) {
   return (
-    <PillarProvider productKey={process.env.NEXT_PUBLIC_PILLAR_PRODUCT_KEY!}>
+    <PillarProvider agentSlug={process.env.NEXT_PUBLIC_PILLAR_AGENT_SLUG!}>
       {children}
     </PillarProvider>
   );

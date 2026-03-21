@@ -37,9 +37,9 @@ yarn add @pillar-ai/react
 
 ## Quick start
 
-### 1. Get your product key
+### 1. Get your agent slug
 
-Sign up at [app.trypillar.com](https://app.trypillar.com) and grab your product key from the dashboard.
+Sign up at [app.trypillar.com](https://app.trypillar.com) and grab your agent slug from the dashboard.
 
 ### 2. Add the provider
 
@@ -50,7 +50,7 @@ import { PillarProvider } from "@pillar-ai/react";
 
 function App() {
   return (
-    <PillarProvider productKey="your-product-key">
+    <PillarProvider agentSlug="your-agent-slug">
       <YourApp />
     </PillarProvider>
   );
@@ -67,7 +67,7 @@ import { PillarProvider } from "@pillar-ai/react";
 
 export function PillarSDKProvider({ children }: { children: React.ReactNode }) {
   return (
-    <PillarProvider productKey="your-product-key">{children}</PillarProvider>
+    <PillarProvider agentSlug="your-agent-slug">{children}</PillarProvider>
   );
 }
 ```
@@ -255,13 +255,13 @@ The root component. Initializes and configures the SDK.
 
 | Prop         | Type             | Required | Description                                |
 | ------------ | ---------------- | -------- | ------------------------------------------ |
-| `productKey` | `string`         | Yes      | Your product key from app.trypillar.com    |
+| `agentSlug` | `string`         | Yes      | Your agent slug from app.trypillar.com    |
 | `config`     | `object`         | No       | SDK configuration (panel, theme, triggers) |
 | `onTask`     | `(task) => void` | No       | Generic handler for dynamic tools          |
 
 ```tsx
 <PillarProvider
-  productKey="your-product-key"
+  agentSlug="your-agent-slug"
   config={{
     panel: { position: "right", mode: "push", width: 400 },
     theme: { mode: "auto", colors: { primary: "#2563eb" } },
@@ -281,7 +281,7 @@ import { PillarProvider, PillarPanel } from "@pillar-ai/react";
 function App() {
   return (
     <PillarProvider
-      productKey="your-product-key"
+      agentSlug="your-agent-slug"
       config={{ panel: { container: "manual" } }}
     >
       <div className="layout">
@@ -299,7 +299,7 @@ For dynamic or backend-triggered tools, use the `onTask` prop on `PillarProvider
 
 ```tsx
 <PillarProvider
-  productKey="your-product-key"
+  agentSlug="your-agent-slug"
   onTask={(task) => {
     if (task.name.startsWith("nav_")) {
       router.push(task.data.path);

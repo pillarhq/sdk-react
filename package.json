@@ -1,6 +1,6 @@
 {
   "name": "@pillar-ai/react",
-  "version": "0.1.16",
+  "version": "0.2.0",
   "description": "React SDK for Pillar product copilot — AI assistant for SaaS and web apps",
   "type": "module",
   "main": "./dist/index.esm.js",
@@ -53,10 +53,8 @@
   },
   "peerDependencies": {
     "react": ">=17.0.0 || >=19.0.0",
-    "react-dom": ">=17.0.0 || >=19.0.0"
-  },
-  "dependencies": {
-    "@pillar-ai/sdk": "^0.1.25"
+    "react-dom": ">=17.0.0 || >=19.0.0",
+    "@pillar-ai/sdk": ">=0.2.0"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.7",

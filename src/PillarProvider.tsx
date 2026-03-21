@@ -125,13 +125,18 @@ export interface PillarContextValue {
 
 export interface PillarProviderProps {
   /**
-   * Your product key from the Pillar app.
-   * Get it at app.trypillar.com
+   * Your agent slug from the Pillar dashboard.
+   * This is the primary identifier for your copilot.
+   */
+  agentSlug?: string;
+
+  /**
+   * @deprecated Use `agentSlug` instead.
    */
   productKey?: string;
 
   /**
-   * @deprecated Use `productKey` instead. Will be removed in v1.0.
+   * @deprecated Use `agentSlug` instead. Will be removed in v1.0.
    */
   helpCenter?: string;
 
@@ -142,7 +147,7 @@ export interface PillarProviderProps {
    * - `panel.useShadowDOM`: Whether to isolate styles in Shadow DOM (default: false).
    *   Set to false to let custom cards inherit your app's CSS (Tailwind, etc.)
    */
-  config?: Omit<PillarConfig, "productKey" | "helpCenter">;
+  config?: Omit<PillarConfig, "productKey" | "helpCenter" | "agentSlug">;
 
   /**
    * Handler called when a task action is triggered from the chat.
@@ -151,7 +156,7 @@ export interface PillarProviderProps {
    * @example
    * ```tsx
    * <PillarProvider
-   *   productKey="my-product-key"
+   *   agentSlug="my-agent-slug"
    *   onTask={(task) => {
    *     switch (task.name) {
    *       case 'invite_team_member':
@@ -187,7 +192,7 @@ export interface PillarProviderProps {
    * @example Legacy pattern (deprecated):
    * ```tsx
    * <PillarProvider
-   *   productKey="my-product-key"
+   *   agentSlug="my-agent-slug"
    *   cards={{
    *     invite_members: InviteMembersCard,
    *   }}
@@ -238,6 +243,7 @@ const PortalRegistryContext = createContext<RegisterPortalFn | null>(null);
 // ============================================================================
 
 export function PillarProvider({
+  agentSlug,
   productKey,
   helpCenter,
   config,
@@ -276,18 +282,20 @@ export function PillarProvider({
     []
   );
 
-  // Support both productKey (new) and helpCenter (deprecated)
-  const resolvedKey = productKey ?? helpCenter;
+  const resolvedKey = agentSlug ?? productKey ?? helpCenter;
 
   // Keep a ref to the latest onTask callback to avoid re-subscribing
   const onTaskRef = useRef(onTask);
   onTaskRef.current = onTask;
 
-  // Warn about deprecated helpCenter usage
   useEffect(() => {
-    if (helpCenter && !productKey) {
+    if (helpCenter && !productKey && !agentSlug) {
       console.warn(
-        '[Pillar React] "helpCenter" prop is deprecated. Use "productKey" instead.'
+        '[Pillar React] "helpCenter" prop is deprecated. Use "agentSlug" instead.'
+      );
+    } else if (productKey && !agentSlug) {
+      console.warn(
+        '[Pillar React] "productKey" prop is deprecated. Use "agentSlug" instead.'
       );
     }
   }, []);
@@ -322,9 +330,8 @@ export function PillarProvider({
           return;
         }
 
-        // Initialize new instance
-        // Note: DOM scanning is disabled, config.domScanning is ignored
         const instance = await Pillar.init({
+          agentSlug: agentSlug,
           productKey: resolvedKey,
           ...config,
         });

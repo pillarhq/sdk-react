@@ -7,7 +7,7 @@
  * 
  * function App() {
  *   return (
- *     <PillarProvider productKey="your-product-key">
+ *     <PillarProvider agentSlug="your-agent-slug">
  *       <MyApp />
  *     </PillarProvider>
  *   );
@@ -29,7 +29,7 @@
  * function AppWithCustomPanel() {
  *   return (
  *     <PillarProvider 
- *       productKey="your-product-key"
+ *       agentSlug="your-agent-slug"
  *       config={{ panel: { container: 'manual' } }}
  *     >
  *       <div className="layout">
@@ -76,6 +76,36 @@ export {
     type ToolWithCard,
     type ToolDefinition,
 } from './hooks/usePillarTools';
+export {
+    usePillarChat,
+    type PillarChatMessage,
+    type UsePillarChatOptions,
+    type UsePillarChatReturn,
+} from './hooks/usePillarChat';
+
+// Message converters (headless chat → AI SDK, AG-UI, simple)
+export {
+    toUIMessages,
+    usePillarChatUIMessages,
+    type UsePillarChatUIMessagesReturn,
+    toAGUIMessages,
+    usePillarChatAGUI,
+    type UsePillarChatAGUIReturn,
+    toSimpleMessages,
+    type ConverterOptions,
+    type PillarUIMessage,
+    type PillarUIMessagePart,
+    type PillarAGUIMessage,
+    type AGUIUserMessage,
+    type AGUIAssistantMessage,
+    type AGUIActivityMessage,
+    type AGUIReasoningMessage,
+    type AGUIInputContent,
+    type AGUITextInput,
+    type AGUIBinaryInput,
+    type PillarSimpleMessage,
+    type SimpleContentPart,
+} from './converters';
 
 // Utilities
 export { defineTool } from './utils/defineTool';
@@ -119,6 +149,13 @@ export type {
     ActionResult,
     ActionSchema,
     ActionType,
+    // Chat types for headless chat
+    ChatMessage,
+    ChatImage,
+    ChatResponse,
+    ProgressEvent,
+    ImageUploadResponse,
+    ArticleSummary,
     // Chat context for escalation
     ChatContext,
     // DOM Scanning types (deprecated - feature is disabled)
