@@ -533,14 +533,14 @@ delete_user: {
 
 ## User Identification
 
-Identify the current user so the AI can personalize responses and the dashboard can track usage per user:
+Identify the current user so the AI can personalize responses and the dashboard can track usage per user. Pass `apiToken` to forward the user's existing auth token to API tool sources (bypasses per-user OAuth linking):
 
 ```tsx
 import { usePillar } from '@pillar-ai/react';
 
 function AuthSync() {
   const { pillar } = usePillar();
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
 
   useEffect(() => {
     if (!pillar || !user) return;
@@ -548,6 +548,7 @@ function AuthSync() {
     pillar.identify(user.id, {
       name: user.name,
       email: user.email,
+      apiToken: accessToken, // forwarded to API tool sources
     });
 
     return () => {
@@ -560,9 +561,10 @@ function AuthSync() {
 ```
 
 Available methods:
-- `identify(userId, profile?)` — Associate a user with the session. Profile fields: `name`, `email`, and any custom properties.
+- `identify(userId, profile?)` — Associate a user with the session. Profile fields: `name`, `email`, `apiToken`, and any custom `metadata`.
+- `setUserApiToken(token)` — Set or update the user's API token for OpenAPI tool passthrough. Cleared automatically on `logout()`.
 - `setUserProfile(profile)` — Update profile data after initial identification.
-- `logout(options?)` — Clear user identity. Pass `{ preserveConversation: true }` to keep chat history.
+- `logout(options?)` — Clear user identity and API token. Pass `{ preserveConversation: true }` to keep chat history.
 
 ## Plans (Automatic)
 

@@ -263,6 +263,7 @@ The root component. Initializes and configures the SDK.
 <PillarProvider
   agentSlug="your-agent-slug"
   config={{
+    // userApiToken: accessToken, // forward auth to API tool sources
     panel: { position: "right", mode: "push", width: 400 },
     theme: { mode: "auto", colors: { primary: "#2563eb" } },
   }}
