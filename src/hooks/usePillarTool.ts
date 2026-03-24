@@ -142,6 +142,7 @@ import type {
   CardCallbacks,
   ToolCardContext,
 } from "@pillar-ai/sdk";
+import { createDefaultConfirmCard } from "@pillar-ai/sdk";
 import React, { useEffect, useMemo, useRef, useSyncExternalStore, type ComponentType } from "react";
 import { usePillarContext, usePortalRegistry } from "../PillarProvider";
 
@@ -187,6 +188,10 @@ export interface ConfirmationRenderProps<T = Record<string, unknown>> {
   onConfirm: (modifiedData?: Record<string, unknown>) => void;
   /** Call to dismiss the confirmation — no execution, card collapses */
   onCancel: () => void;
+  /** True when no message is being streamed — safe to interact */
+  isReady: boolean;
+  /** True when this is still the latest card in the chat. False once newer messages arrive. */
+  isLatest: boolean;
 }
 
 /**
@@ -363,6 +368,60 @@ function ReactiveCardWrapper({
 }
 
 /**
+ * Wrapper component that reactively computes context for confirmation cards.
+ * Re-renders when message list or loading state changes so `isLatest` and `isReady` stay accurate.
+ */
+function ReactiveConfirmWrapper({
+  ConfirmComponent,
+  data,
+  onConfirm,
+  onCancel,
+  messageIndex,
+  segmentIndex,
+  pillar,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ConfirmComponent: ComponentType<ConfirmationRenderProps<any>>;
+  data: Record<string, unknown>;
+  onConfirm: (modifiedData?: Record<string, unknown>) => void;
+  onCancel: () => void;
+  messageIndex: number;
+  segmentIndex: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  pillar: any;
+}) {
+  const subscribe = React.useCallback(
+    (cb: () => void) => pillar.subscribeToMessages(cb),
+    [pillar]
+  );
+  const getSnapshot = React.useCallback(
+    () => (pillar.isPositionLatest(messageIndex, segmentIndex) ? "true" : "false"),
+    [pillar, messageIndex, segmentIndex]
+  );
+  const isLatestStr = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const isLatest = isLatestStr === "true";
+
+  const subscribeLoading = React.useCallback(
+    (cb: () => void) => pillar.subscribeToLoadingState(cb),
+    [pillar]
+  );
+  const getLoadingSnapshot = React.useCallback(
+    () => (pillar.isChatLoading ? "loading" : "ready"),
+    [pillar]
+  );
+  const readyStr = useSyncExternalStore(subscribeLoading, getLoadingSnapshot, getLoadingSnapshot);
+  const isReady = readyStr === "ready";
+
+  return React.createElement(ConfirmComponent, {
+    data,
+    onConfirm,
+    onCancel,
+    isReady,
+    isLatest,
+  });
+}
+
+/**
  * Register one or more Pillar tools with co-located metadata and handlers.
  *
  * The tools are registered when the component mounts and automatically
@@ -497,7 +556,7 @@ export function usePillarTool(
 
           const unsubCard = pillar.registerCard(
             schema.name,
-            (container, data, callbacks: CardCallbacks) => {
+            (container, data, callbacks: CardCallbacks, context) => {
               const handleConfirm = async (
                 modifiedData?: Record<string, unknown>
               ) => {
@@ -512,8 +571,12 @@ export function usePillarTool(
                 try {
                   callbacks.onStateChange?.("loading");
                   const result = await currentSchema.execute(executeData);
+                  pillar.clearPendingConfirmation(schema.name);
                   if (result !== undefined) {
-                    await pillar.sendToolResult(schema.name, result);
+                    pillar.sendToolResultAsMessage(
+                      schema.name,
+                      result as Record<string, unknown>
+                    );
                   }
                   callbacks.onStateChange?.("success");
                 } catch (err) {
@@ -521,7 +584,8 @@ export function usePillarTool(
                     "error",
                     err instanceof Error ? err.message : String(err)
                   );
-                  await pillar.sendToolResult(schema.name, {
+                  pillar.clearPendingConfirmation(schema.name);
+                  pillar.sendToolResultAsMessage(schema.name, {
                     success: false,
                     error:
                       err instanceof Error ? err.message : String(err),
@@ -530,7 +594,11 @@ export function usePillarTool(
               };
 
               const handleCancel = () => {
-                callbacks.onCancel?.();
+                pillar.clearPendingConfirmation(schema.name);
+                pillar.sendToolResultAsMessage(schema.name, {
+                  cancelled: true,
+                  message: "User cancelled this action.",
+                });
               };
 
               if (ConfirmComponent) {
@@ -548,19 +616,29 @@ export function usePillarTool(
                 const cleanup = registerPortalRef.current(
                   portalId,
                   container,
-                  React.createElement(CurrentConfirm, {
+                  React.createElement(ReactiveConfirmWrapper, {
+                    ConfirmComponent: CurrentConfirm,
                     data,
                     onConfirm: handleConfirm,
                     onCancel: handleCancel,
+                    messageIndex: context?.messageIndex ?? -1,
+                    segmentIndex: context?.segmentIndex ?? -1,
+                    pillar,
                   })
                 );
                 portalCleanups.push(cleanup);
 
                 return cleanup;
               } else {
-                // Use the default card — wire confirm/cancel through callbacks
+                // No custom component — render the default confirm/cancel card
                 callbacks.onConfirm = handleConfirm;
                 callbacks.onCancel = handleCancel;
+                const defaultCard = createDefaultConfirmCard(
+                  { name: schema.name, data } as Parameters<typeof createDefaultConfirmCard>[0],
+                  callbacks,
+                  context?.messageIndex
+                );
+                container.appendChild(defaultCard);
               }
             }
           );
