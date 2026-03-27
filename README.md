@@ -388,12 +388,22 @@ For custom confirmation UI, use `renderConfirmation`:
 ```tsx
 import { usePillarTool, type ConfirmationRenderProps } from "@pillar-ai/react";
 
-function ConfirmPurchase({ data, onConfirm, onCancel }: ConfirmationRenderProps) {
+function ConfirmPurchase({
+  data,
+  onConfirm,
+  onCancel,
+  isReady,
+  isLatest,
+}: ConfirmationRenderProps<{ total: number; cartId: string }>) {
   return (
-    <div className="p-4 border rounded">
+    <div className={`p-4 border rounded ${!isLatest ? "opacity-50" : ""}`}>
       <p>Complete purchase for ${data.total}?</p>
-      <button onClick={() => onConfirm()}>Buy Now</button>
-      <button onClick={onCancel}>Cancel</button>
+      <div className="flex gap-2 mt-4">
+        <button onClick={() => onConfirm()} disabled={!isReady}>
+          Buy Now
+        </button>
+        <button onClick={onCancel}>Cancel</button>
+      </div>
     </div>
   );
 }
@@ -401,6 +411,7 @@ function ConfirmPurchase({ data, onConfirm, onCancel }: ConfirmationRenderProps)
 usePillarTool({
   name: "complete_purchase",
   description: "Complete the purchase",
+  type: "trigger_tool",
   renderConfirmation: ConfirmPurchase,
   execute: async ({ cartId }) => {
     await api.checkout(cartId);
@@ -410,6 +421,16 @@ usePillarTool({
 ```
 
 Providing `renderConfirmation` implies `needsConfirmation` — you don't need to set both.
+
+The `ConfirmationRenderProps` interface provides:
+
+| Prop | Type | Description |
+| ---- | ---- | ----------- |
+| `data` | `T` | Data the AI extracted via `inputSchema` |
+| `onConfirm` | `(modifiedData?) => void` | Approve the action. Optionally pass modified data to override what the AI sent to `execute`. |
+| `onCancel` | `() => void` | Dismiss the confirmation without executing |
+| `isReady` | `boolean` | True when the AI is not streaming — safe to interact |
+| `isLatest` | `boolean` | True when this is the most recent card in the chat |
 
 ## Exports
 

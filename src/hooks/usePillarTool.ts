@@ -575,7 +575,7 @@ export function usePillarTool(
                   if (result !== undefined) {
                     pillar.sendToolResultAsMessage(
                       schema.name,
-                      result as Record<string, unknown>
+                      result
                     );
                   }
                   callbacks.onStateChange?.("success");
